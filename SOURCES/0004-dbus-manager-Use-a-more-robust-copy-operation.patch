@@ -1,0 +1,46 @@
+From ef022816e3fe321d9ee9b5a2deab96ca718f7215 Mon Sep 17 00:00:00 2001
+From: Carlos Soriano <csoriano@redhat.com>
+Date: Tue, 7 Aug 2018 10:47:28 +0200
+Subject: [PATCH 04/11] dbus-manager: Use a more robust copy operation
+
+We were using the copy_file operation which seems to be quite buggy,
+Nautilus should probably drop that one soon, specially since no other
+part of Nautilus uses it.
+---
+ src/nautilus-dbus-manager.c | 13 ++++---------
+ 1 file changed, 4 insertions(+), 9 deletions(-)
+
+diff --git a/src/nautilus-dbus-manager.c b/src/nautilus-dbus-manager.c
+index bce6b5c4d..8135c9650 100644
+--- a/src/nautilus-dbus-manager.c
++++ b/src/nautilus-dbus-manager.c
+@@ -150,22 +150,17 @@ handle_copy_uris (NautilusDBusFileOperations  *object,
+                   const gchar                 *destination)
+ {
+     GList *source_files = NULL;
+-    GFile *dest_dir;
+     gint idx;
+ 
+-    dest_dir = g_file_new_for_uri (destination);
+-
+     for (idx = 0; sources[idx] != NULL; idx++)
+     {
+-        source_files = g_list_prepend (source_files,
+-                                       g_file_new_for_uri (sources[idx]));
++        source_files = g_list_prepend (source_files, g_strdup (sources[idx]));
+     }
+ 
+-    nautilus_file_operations_copy (source_files, dest_dir, NULL, NULL, NULL);
+-
+-    g_list_free_full (source_files, g_object_unref);
+-    g_object_unref (dest_dir);
++    nautilus_file_operations_copy_move (source_files, destination,
++                                        GDK_ACTION_COPY, NULL, NULL, NULL);
+ 
++    g_list_free_full (source_files, g_free);
+     nautilus_dbus_file_operations_complete_copy_uris (object, invocation);
+     return TRUE; /* invocation was handled */
+ }
+-- 
+2.17.1
+

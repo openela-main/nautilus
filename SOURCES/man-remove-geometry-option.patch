@@ -1,0 +1,29 @@
+From 4190844d91f9d4f1bb2997d7769caa57dd5f9a4c Mon Sep 17 00:00:00 2001
+From: Carlos Soriano <csoriano1618@gmail.com>
+Date: Fri, 7 Sep 2018 08:05:18 +0000
+Subject: [PATCH] man: Remove geometry option
+
+We removed that some time ago.
+---
+ docs/nautilus.1 | 5 -----
+ 1 file changed, 5 deletions(-)
+
+diff --git a/docs/nautilus.1 b/docs/nautilus.1
+index 70304a1d2..a868c72cb 100644
+--- a/docs/nautilus.1
++++ b/docs/nautilus.1
+@@ -37,11 +37,6 @@ Perform a quick set of self-check tests.
+ .B \-\-version
+ Show the version of the program.
+ 
+-.TP
+-.BR \-g ", " \-\-geometry=\fIGEOMETRY\fR
+-Create the initial window with the given geometry. \fBDeprecated\fR - the geometry
+-is saved and loaded using GSettings.
+-
+ .TP
+ .BR \-w ", " \-\-new-window
+ Always open a new window for browsing specified URIs.
+-- 
+2.21.0
+

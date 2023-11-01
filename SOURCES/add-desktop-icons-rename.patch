@@ -1,0 +1,90 @@
+From bac4bd595c518983571b0fb41fcf5586f27544eb Mon Sep 17 00:00:00 2001
+From: Carlos Soriano <csoriano@redhat.com>
+Date: Mon, 19 Nov 2018 08:55:22 +0000
+Subject: [PATCH] dbus: Implement rename file
+
+So desktop icons extensions can use it.
+
+
+(cherry picked from commit 42c5ce657e2b24ddf19932e9e3284a045d60ff51)
+---
+ data/dbus-interfaces.xml    |  4 ++++
+ src/nautilus-dbus-manager.c | 33 +++++++++++++++++++++++++++++++++
+ 2 files changed, 37 insertions(+)
+
+diff --git a/data/dbus-interfaces.xml b/data/dbus-interfaces.xml
+index 298871bc4..1827f92ab 100644
+--- a/data/dbus-interfaces.xml
++++ b/data/dbus-interfaces.xml
+@@ -39,6 +39,10 @@
+     <method name='CreateFolder'>
+       <arg type='s' name='URI' direction='in'/>
+     </method>
++    <method name='RenameFile'>
++      <arg type='s' name='URI' direction='in'/>
++      <arg type='s' name='NewName' direction='in'/>
++    </method>
+     <method name='Undo'>
+     </method>
+     <method name='Redo'>
+diff --git a/src/nautilus-dbus-manager.c b/src/nautilus-dbus-manager.c
+index 3257c4bd4..43f27e10a 100644
+--- a/src/nautilus-dbus-manager.c
++++ b/src/nautilus-dbus-manager.c
+@@ -27,6 +27,7 @@
+ 
+ #include "nautilus-file-operations.h"
+ #include "nautilus-file-undo-manager.h"
++#include "nautilus-file.h"
+ 
+ #define DEBUG_FLAG NAUTILUS_DEBUG_DBUS
+ #include "nautilus-debug.h"
+@@ -230,6 +231,34 @@ handle_trash_files (NautilusDBusFileOperations  *object,
+     return TRUE; /* invocation was handled */
+ }
+ 
++static void
++rename_file_on_finished (NautilusFile *file,
++                         GFile        *result_location,
++                         GError       *error,
++                         gpointer      callback_data)
++{
++    g_application_release (g_application_get_default ());
++}
++
++static gboolean
++handle_rename_file (NautilusDBusFileOperations *object,
++                    GDBusMethodInvocation      *invocation,
++                    const gchar                *uri,
++                    const gchar                *new_name)
++{
++    NautilusFile *file = NULL;
++
++    file = nautilus_file_get_by_uri (uri);
++
++    g_application_hold (g_application_get_default ());
++    nautilus_file_rename (file, new_name,
++                          rename_file_on_finished, NULL);
++
++    nautilus_dbus_file_operations_complete_rename_file (object, invocation);
++
++    return TRUE; /* invocation was handled */
++}
++
+ 
+ static void
+ undo_manager_changed (NautilusDBusManager *self)
+@@ -266,6 +295,10 @@ nautilus_dbus_manager_init (NautilusDBusManager *self)
+                       "handle-create-folder",
+                       G_CALLBACK (handle_create_folder),
+                       self);
++    g_signal_connect (self->file_operations,
++                      "handle-rename-file",
++                      G_CALLBACK (handle_rename_file),
++                      self);
+     g_signal_connect (self->file_operations,
+                       "handle-undo",
+                       G_CALLBACK (handle_undo),
+-- 
+2.18.1
+

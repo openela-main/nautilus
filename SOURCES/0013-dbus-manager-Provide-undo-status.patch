@@ -1,0 +1,78 @@
+From 90229bd32fde57feb4dd37bc018d47c7a29e7e93 Mon Sep 17 00:00:00 2001
+From: Carlos Soriano <csoriano@redhat.com>
+Date: Sat, 18 Aug 2018 20:31:36 +0200
+Subject: [PATCH] dbus-manager: Provide undo status
+
+This is interesting for the desktop icons integration, so it can hide
+the undo/redo menu items appropriately.
+---
+ data/dbus-interfaces.xml    |  1 +
+ src/nautilus-dbus-manager.c | 31 +++++++++++++++++++++++++++++--
+ 2 files changed, 30 insertions(+), 2 deletions(-)
+
+diff --git a/data/dbus-interfaces.xml b/data/dbus-interfaces.xml
+index 64176225c..078cf24a2 100644
+--- a/data/dbus-interfaces.xml
++++ b/data/dbus-interfaces.xml
+@@ -43,5 +43,6 @@
+     </method>
+     <method name='Redo'>
+     </method>
++    <property name="UndoStatus" type="i" access="read"/>
+   </interface>
+ </node>
+diff --git a/src/nautilus-dbus-manager.c b/src/nautilus-dbus-manager.c
+index f11ede0ad..64f004d88 100644
+--- a/src/nautilus-dbus-manager.c
++++ b/src/nautilus-dbus-manager.c
+@@ -237,6 +237,17 @@ handle_trash_files (NautilusDBusFileOperations  *object,
+     return TRUE; /* invocation was handled */
+ }
+
++
++static void
++undo_manager_changed (NautilusDBusManager *self)
++{
++    NautilusFileUndoManagerState undo_state;
++
++    undo_state = nautilus_file_undo_manager_get_state ();
++    nautilus_dbus_file_operations_set_undo_status (self->file_operations,
++                                                   undo_state);
++}
++
+ static void
+ nautilus_dbus_manager_init (NautilusDBusManager *self)
+ {
+@@ -292,12 +303,28 @@ nautilus_dbus_manager_register (NautilusDBusManager  *self,
+                                 GDBusConnection      *connection,
+                                 GError              **error)
+ {
+-    return g_dbus_interface_skeleton_export (G_DBUS_INTERFACE_SKELETON (self->file_operations),
+-                                             connection, "/org/gnome/Nautilus" PROFILE, error);
++    gboolean succes;
++
++    succes = g_dbus_interface_skeleton_export (G_DBUS_INTERFACE_SKELETON (self->file_operations),
++                                               connection, "/org/gnome/Nautilus" PROFILE, error);
++    if (succes)
++    {
++        g_signal_connect_object (nautilus_file_undo_manager_get (),
++                                 "undo-changed",
++                                 G_CALLBACK (undo_manager_changed),
++                                 self,
++                                 G_CONNECT_SWAPPED);
++
++        undo_manager_changed (self);
++    }
++
++    return succes;
+ }
+
+ void
+ nautilus_dbus_manager_unregister (NautilusDBusManager *self)
+ {
+     g_dbus_interface_skeleton_unexport (G_DBUS_INTERFACE_SKELETON (self->file_operations));
++
++    g_signal_handlers_disconnect_by_data (nautilus_file_undo_manager_get (), self);
+ }
+--
+2.17.1

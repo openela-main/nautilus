@@ -1,0 +1,35 @@
+From ee035fe0b4257d335687c038bf8b41a64d452d7f Mon Sep 17 00:00:00 2001
+From: Ondrej Holy <oholy@redhat.com>
+Date: Mon, 18 Nov 2019 11:34:10 +0100
+Subject: [PATCH] file-operations: Honor umask when creating new files
+
+File creation mask should be honored when creating new files from
+templates as it is when creating new folders, or dragging raw data. But
+it is not because G_FILE_COPY_NONE flag is specified when creating new
+files from templates. Let's use G_FILE_COPY_TARGET_DEFAULT_PERMS flag
+to ensure that file creation mask is honored in this case as well.
+
+Just note that this behavior is not wanted when copying in general
+(although it is also honored by "cp" cmd in this case) as it might have
+some unexpected consequences as discussed on:
+https://bugzilla.gnome.org/show_bug.cgi?id=167102
+---
+ src/nautilus-file-operations.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/nautilus-file-operations.c b/src/nautilus-file-operations.c
+index acf65f3cf..a90706e2e 100644
+--- a/src/nautilus-file-operations.c
++++ b/src/nautilus-file-operations.c
+@@ -7361,7 +7361,7 @@ retry:
+         {
+             res = g_file_copy (job->src,
+                                dest,
+-                               G_FILE_COPY_NONE,
++                               G_FILE_COPY_TARGET_DEFAULT_PERMS,
+                                common->cancellable,
+                                NULL, NULL,
+                                &error);
+-- 
+2.26.0
+

@@ -1,0 +1,93 @@
+From 5b40335c34a3b920348633274a03d073d1338a09 Mon Sep 17 00:00:00 2001
+From: Ondrej Holy <oholy@redhat.com>
+Date: Mon, 9 Jan 2023 13:12:17 +0100
+Subject: [PATCH] Revert "application: add common startup code"
+
+This reverts commit 23ae53870a39afe43548111b6432db39511a6e97. This
+change was needed for split of desktop-related functionality, but it
+seems no more needed to me. Let's revert those changes to make the
+code a bit easier as a preparation for the next commits.
+---
+ src/nautilus-application.c | 31 ++++++-------------------------
+ src/nautilus-application.h |  1 -
+ 2 files changed, 6 insertions(+), 26 deletions(-)
+
+diff --git a/src/nautilus-application.c b/src/nautilus-application.c
+index 22a01ad..829faa3 100644
+--- a/src/nautilus-application.c
++++ b/src/nautilus-application.c
+@@ -1250,9 +1250,10 @@ on_application_shutdown (GApplication *application,
+     nautilus_icon_info_clear_caches ();
+ }
+ 
+-void
+-nautilus_application_startup_common (NautilusApplication *self)
++static void
++nautilus_application_startup (GApplication *app)
+ {
++    NautilusApplication *self = NAUTILUS_APPLICATION (app);
+     NautilusApplicationPrivate *priv;
+ 
+     nautilus_profile_start (NULL);
+@@ -1269,6 +1270,9 @@ nautilus_application_startup_common (NautilusApplication *self)
+ 
+     setup_theme_extensions ();
+ 
++    /* create DBus manager */
++    priv->fdb_manager = nautilus_freedesktop_dbus_new ();
++
+     /* initialize preferences and create the global GSettings objects */
+     nautilus_global_preferences_init ();
+ 
+@@ -1295,22 +1299,6 @@ nautilus_application_startup_common (NautilusApplication *self)
+     g_signal_connect (self, "shutdown", G_CALLBACK (on_application_shutdown), NULL);
+ }
+ 
+-static void
+-nautilus_application_startup (GApplication *app)
+-{
+-    NautilusApplication *self = NAUTILUS_APPLICATION (app);
+-    NautilusApplicationPrivate *priv;
+-
+-    nautilus_profile_start (NULL);
+-    priv = nautilus_application_get_instance_private (self);
+-
+-    /* create DBus manager */
+-    priv->fdb_manager = nautilus_freedesktop_dbus_new ();
+-    nautilus_application_startup_common (self);
+-
+-    nautilus_profile_end (NULL);
+-}
+-
+ static gboolean
+ nautilus_application_dbus_register (GApplication     *app,
+                                     GDBusConnection  *connection,
+@@ -1374,13 +1362,6 @@ update_dbus_opened_locations (NautilusApplication *self)
+ 
+     priv = nautilus_application_get_instance_private (self);
+ 
+-    /* Children of nautilus application could not handle the dbus, so don't
+-     * do anything in that case */
+-    if (!priv->fdb_manager)
+-    {
+-        return;
+-    }
+-
+     for (l = priv->windows; l != NULL; l = l->next)
+     {
+         window = l->data;
+diff --git a/src/nautilus-application.h b/src/nautilus-application.h
+index 197a276..5f15f06 100644
+--- a/src/nautilus-application.h
++++ b/src/nautilus-application.h
+@@ -88,7 +88,6 @@ GtkWidget * nautilus_application_connect_server (NautilusApplication *applicatio
+ void nautilus_application_search (NautilusApplication *application,
+                                   const gchar         *uri,
+                                   const gchar         *text);
+-void nautilus_application_startup_common (NautilusApplication *application);
+ G_END_DECLS
+ 
+ #endif /* __NAUTILUS_APPLICATION_H__ */
+-- 
+2.38.1
+

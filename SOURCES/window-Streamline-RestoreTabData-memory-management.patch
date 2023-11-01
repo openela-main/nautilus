@@ -1,0 +1,118 @@
+From 4bdd3fad8d51e50e3539c8e04bc91538467bd236 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Ant=C3=B3nio=20Fernandes?= <antoniof@gnome.org>
+Date: Wed, 8 Jul 2020 14:44:38 +0100
+Subject: [PATCH] window: Streamline RestoreTabData memory management
+
+When restoring the back and forward lists, we make a deep copy only to
+free the data immediately afterwards.
+
+Instead of reallocating the lists unnecessarily, let's just steal them.
+
+Also, use g_queue_free_full() to make free_restore_tab_data() a proper
+GDestroyNotify; also define it in window-slot.c, where it belongs.
+---
+ src/nautilus-window-slot.c | 16 ++++++++++++++--
+ src/nautilus-window-slot.h |  1 +
+ src/nautilus-window.c      | 20 ++------------------
+ 3 files changed, 17 insertions(+), 20 deletions(-)
+
+diff --git a/src/nautilus-window-slot.c b/src/nautilus-window-slot.c
+index c3260aeb0..bf040bff2 100644
+--- a/src/nautilus-window-slot.c
++++ b/src/nautilus-window-slot.c
+@@ -155,6 +155,18 @@ static void trash_state_changed_cb (NautilusTrashMonitor *monitor,
+                                     gboolean              is_empty,
+                                     gpointer              user_data);
+ 
++void
++free_restore_tab_data (gpointer data)
++{
++    RestoreTabData *tab_data = data;
++
++    g_list_free_full (tab_data->back_list, g_object_unref);
++    g_list_free_full (tab_data->forward_list, g_object_unref);
++    nautilus_file_unref (tab_data->file);
++
++    g_free (tab_data);
++}
++
+ void
+ nautilus_window_slot_restore_from_data (NautilusWindowSlot *self,
+                                         RestoreTabData     *data)
+@@ -163,9 +175,9 @@ nautilus_window_slot_restore_from_data (NautilusWindowSlot *self,
+ 
+     priv = nautilus_window_slot_get_instance_private (self);
+ 
+-    priv->back_list = g_list_copy_deep (data->back_list, (GCopyFunc) g_object_ref, NULL);
++    priv->back_list = g_steal_pointer (&data->back_list);
+ 
+-    priv->forward_list = g_list_copy_deep (data->forward_list, (GCopyFunc) g_object_ref, NULL);
++    priv->forward_list = g_steal_pointer (&data->forward_list);
+ 
+     priv->view_mode_before_search = data->view_before_search;
+ 
+diff --git a/src/nautilus-window-slot.h b/src/nautilus-window-slot.h
+index 573357d9b..bda1a920f 100644
+--- a/src/nautilus-window-slot.h
++++ b/src/nautilus-window-slot.h
+@@ -125,4 +125,5 @@ RestoreTabData* nautilus_window_slot_get_restore_tab_data (NautilusWindowSlot *s
+ /* Only used by slot-dnd */
+ NautilusView*  nautilus_window_slot_get_current_view       (NautilusWindowSlot *slot);
+ 
++void free_restore_tab_data                                 (gpointer data);
+ #endif /* NAUTILUS_WINDOW_SLOT_H */
+diff --git a/src/nautilus-window.c b/src/nautilus-window.c
+index 1f8d5208e..175da6fce 100644
+--- a/src/nautilus-window.c
++++ b/src/nautilus-window.c
+@@ -79,8 +79,6 @@ static GtkWidget *nautilus_window_ensure_location_entry (NautilusWindow *window)
+ static void close_slot (NautilusWindow     *window,
+                         NautilusWindowSlot *slot,
+                         gboolean            remove_from_notebook);
+-static void free_restore_tab_data (gpointer data,
+-                                   gpointer user_data);
+ 
+ /* Sanity check: highest mouse button value I could find was 14. 5 is our
+  * lower threshold (well-documented to be the one of the button events for the
+@@ -1374,7 +1372,7 @@ action_restore_tab (GSimpleAction *action,
+     nautilus_window_slot_open_location_full (slot, location, flags, NULL);
+     nautilus_window_slot_restore_from_data (slot, data);
+ 
+-    free_restore_tab_data (data, NULL);
++    free_restore_tab_data (data);
+ }
+ 
+ static void
+@@ -2501,19 +2499,6 @@ nautilus_window_destroy (GtkWidget *object)
+     GTK_WIDGET_CLASS (nautilus_window_parent_class)->destroy (object);
+ }
+ 
+-static void
+-free_restore_tab_data (gpointer data,
+-                       gpointer user_data)
+-{
+-    RestoreTabData *tab_data = data;
+-
+-    g_list_free_full (tab_data->back_list, g_object_unref);
+-    g_list_free_full (tab_data->forward_list, g_object_unref);
+-    nautilus_file_unref (tab_data->file);
+-
+-    g_free (tab_data);
+-}
+-
+ static void
+ nautilus_window_finalize (GObject *object)
+ {
+@@ -2548,8 +2533,7 @@ nautilus_window_finalize (GObject *object)
+                                           G_CALLBACK (nautilus_window_on_undo_changed),
+                                           window);
+ 
+-    g_queue_foreach (priv->tab_data_queue, (GFunc) free_restore_tab_data, NULL);
+-    g_queue_free (priv->tab_data_queue);
++    g_queue_free_full (priv->tab_data_queue, free_restore_tab_data);
+ 
+     g_object_unref (priv->pad_controller);
+ 
+-- 
+2.35.1
+

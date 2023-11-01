@@ -1,0 +1,69 @@
+From db2b7aea67c994ba8a6e5a9ffec245b1daebcdfb Mon Sep 17 00:00:00 2001
+From: Carlos Soriano <csoriano@redhat.com>
+Date: Mon, 6 Aug 2018 17:32:00 +0200
+Subject: [PATCH 01/11] dbus-manager: Implement trashing files
+
+So desktop icons extension can use it.
+---
+ data/dbus-interfaces.xml    |  3 +++
+ src/nautilus-dbus-manager.c | 24 ++++++++++++++++++++++++
+ 2 files changed, 27 insertions(+)
+
+diff --git a/data/dbus-interfaces.xml b/data/dbus-interfaces.xml
+index 35fb9945b..4588762a9 100644
+--- a/data/dbus-interfaces.xml
++++ b/data/dbus-interfaces.xml
+@@ -35,5 +35,8 @@
+       <arg type='s' name='DestinationDirectoryURI' direction='in'/>
+       <arg type='s' name='DestinationDisplayName' direction='in'/>
+     </method>
++    <method name='TrashFiles'>
++      <arg type='as' name='URIs' direction='in'/>
++    </method>
+   </interface>
+ </node>
+diff --git a/src/nautilus-dbus-manager.c b/src/nautilus-dbus-manager.c
+index 3611a2358..4da1c727b 100644
+--- a/src/nautilus-dbus-manager.c
++++ b/src/nautilus-dbus-manager.c
+@@ -131,6 +131,26 @@ handle_empty_trash (NautilusDBusFileOperations *object,
+     return TRUE; /* invocation was handled */
+ }
+ 
++static gboolean
++handle_trash_files (NautilusDBusFileOperations  *object,
++                    GDBusMethodInvocation       *invocation,
++                    const gchar                **sources)
++{
++    g_autolist (GFile) source_files = NULL;
++    gint idx;
++
++    for (idx = 0; sources[idx] != NULL; idx++)
++    {
++        source_files = g_list_prepend (source_files,
++                                       g_file_new_for_uri (sources[idx]));
++    }
++
++    nautilus_file_operations_trash_or_delete (source_files, NULL, NULL, NULL);
++
++    nautilus_dbus_file_operations_complete_trash_files (object, invocation);
++    return TRUE; /* invocation was handled */
++}
++
+ static void
+ nautilus_dbus_manager_init (NautilusDBusManager *self)
+ {
+@@ -148,6 +168,10 @@ nautilus_dbus_manager_init (NautilusDBusManager *self)
+                       "handle-empty-trash",
+                       G_CALLBACK (handle_empty_trash),
+                       self);
++    g_signal_connect (self->file_operations,
++                      "handle-trash-files",
++                      G_CALLBACK (handle_trash_files),
++                      self);
+ }
+ 
+ static void
+-- 
+2.17.1
+

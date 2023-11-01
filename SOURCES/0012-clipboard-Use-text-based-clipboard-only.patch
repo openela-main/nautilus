@@ -1,0 +1,552 @@
+From 228971be31f92625f641531e1b78b8c8e63677b0 Mon Sep 17 00:00:00 2001
+From: Carlos Soriano <csoriano@redhat.com>
+Date: Tue, 31 Jul 2018 22:10:03 +0200
+Subject: [PATCH] clipboard: Use text based clipboard only
+
+---
+ src/nautilus-canvas-view.c |  13 ++++++-------
+ src/nautilus-clipboard.c   | 113 ++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------
+ src/nautilus-clipboard.h   |   5 +++--
+ src/nautilus-files-view.c  | 112 +++++++++++++++++++++++++++++++++-------------------------------------------------------------------------------
+ src/nautilus-list-view.c   |  13 ++++++-------
+ 5 files changed, 102 insertions(+), 154 deletions(-)
+
+diff --git a/src/nautilus-canvas-view.c b/src/nautilus-canvas-view.c
+index f99ddd9..7de0808 100644
+--- a/src/nautilus-canvas-view.c
++++ b/src/nautilus-canvas-view.c
+@@ -549,9 +549,9 @@ nautilus_canvas_view_begin_loading (NautilusFilesView *view)
+ }
+ 
+ static void
+-on_clipboard_contents_received (GtkClipboard     *clipboard,
+-                                GtkSelectionData *selection_data,
+-                                gpointer          user_data)
++on_clipboard_contents_received (GtkClipboard *clipboard,
++                                const gchar  *selection_data,
++                                gpointer      user_data)
+ {
+     NautilusCanvasView *canvas_view;
+ 
+@@ -590,10 +590,9 @@ static void
+ update_clipboard_status (NautilusCanvasView *view)
+ {
+     g_object_ref (view);     /* Need to keep the object alive until we get the reply */
+-    gtk_clipboard_request_contents (nautilus_clipboard_get (GTK_WIDGET (view)),
+-                                    nautilus_clipboard_get_atom (),
+-                                    on_clipboard_contents_received,
+-                                    view);
++    gtk_clipboard_request_text (nautilus_clipboard_get (GTK_WIDGET (view)),
++                                on_clipboard_contents_received,
++                                view);
+ }
+ 
+ static void
+diff --git a/src/nautilus-clipboard.c b/src/nautilus-clipboard.c
+index 267d7a3..752ff13 100644
+--- a/src/nautilus-clipboard.c
++++ b/src/nautilus-clipboard.c
+@@ -33,30 +33,32 @@
+ #include <gtk/gtk.h>
+ #include <string.h>
+ 
+-static GdkAtom copied_files_atom;
+-
+ typedef struct
+ {
+     gboolean cut;
+     GList *files;
+ } ClipboardInfo;
+ 
+ static GList *
+-convert_lines_to_str_list (char **lines)
++convert_selection_data_to_str_list (const gchar *data)
+ {
+     int i;
+     GList *result;
++    size_t number_of_lines;
++    gchar **lines;
+ 
+-    if (lines[0] == NULL)
+-    {
+-        return NULL;
+-    }
+-
++    lines = g_strsplit (data, "\n", 0);
+     result = NULL;
+-    for (i = 0; lines[i] != NULL; i++)
++    number_of_lines = g_strv_length (lines);
++    /* Also, this skips the last line, since it would be an
++     * empty string from the split */
++    for (i = 0; i < number_of_lines - 1; i++)
+     {
+         result = g_list_prepend (result, g_strdup (lines[i]));
+     }
++
++    g_strfreev (lines);
++
+     return g_list_reverse (result);
+ }
+ 
+@@ -77,7 +79,8 @@ convert_file_list_to_string (ClipboardInfo *info,
+     }
+     else
+     {
+-        uris = g_string_new (info->cut ? "cut" : "copy");
++        uris = g_string_new ("x-special/nautilus-clipboard\n");
++        g_string_append (uris, info->cut ? "cut\n" : "copy\n");
+     }
+ 
+     for (i = 0, l = info->files; l != NULL; l = l->next, i++)
+@@ -100,16 +103,12 @@ convert_file_list_to_string (ClipboardInfo *info,
+                 g_string_append (uris, uri);
+             }
+ 
+-            /* skip newline for last element */
+-            if (i + 1 < g_list_length (info->files))
+-            {
+-                g_string_append_c (uris, '\n');
+-            }
++            g_string_append_c (uris, '\n');
+         }
+         else
+         {
+-            g_string_append_c (uris, '\n');
+             g_string_append (uris, uri);
++            g_string_append_c (uris, '\n');
+         }
+ 
+         g_free (uri);
+@@ -120,43 +119,60 @@ convert_file_list_to_string (ClipboardInfo *info,
+ }
+ 
+ static GList *
+-get_item_list_from_selection_data (GtkSelectionData *selection_data)
++get_item_list_from_selection_data (const gchar *selection_data)
+ {
+-    GList *items;
+-    char **lines;
++    GList *items = NULL;
+ 
+-    if (gtk_selection_data_get_data_type (selection_data) != copied_files_atom
+-        || gtk_selection_data_get_length (selection_data) <= 0)
++    if (selection_data != NULL)
+     {
+-        items = NULL;
+-    }
+-    else
+-    {
+-        gchar *data;
++        gboolean valid_data = TRUE;
+         /* Not sure why it's legal to assume there's an extra byte
+          * past the end of the selection data that it's safe to write
+          * to. But gtk_editable_selection_received does this, so I
+          * think it is OK.
+          */
+-        data = (gchar *) gtk_selection_data_get_data (selection_data);
+-        data[gtk_selection_data_get_length (selection_data)] = '\0';
+-        lines = g_strsplit (data, "\n", 0);
+-        items = convert_lines_to_str_list (lines);
+-        g_strfreev (lines);
++        items = convert_selection_data_to_str_list (selection_data);
++        if (items == NULL || g_strcmp0 (items->data, "x-special/nautilus-clipboard") != 0)
++        {
++            valid_data = FALSE;
++        }
++        else if (items->next == NULL)
++        {
++            valid_data = FALSE;
++        }
++        else if (g_strcmp0 (items->next->data, "cut") != 0 &&
++                 g_strcmp0 (items->next->data, "copy") != 0)
++        {
++            valid_data = FALSE;
++        }
++
++        if (!valid_data)
++        {
++            g_list_free_full (items, g_free);
++            items = NULL;
++        }
+     }
+ 
+     return items;
+ }
+ 
++gboolean
++nautilus_clipboard_is_data_valid_from_selection_data (const gchar *selection_data)
++{
++    return nautilus_clipboard_get_uri_list_from_selection_data (selection_data) != NULL;
++}
++
+ GList *
+-nautilus_clipboard_get_uri_list_from_selection_data (GtkSelectionData *selection_data)
++nautilus_clipboard_get_uri_list_from_selection_data (const gchar *selection_data)
+ {
+     GList *items;
+ 
+     items = get_item_list_from_selection_data (selection_data);
+     if (items)
+     {
+-        /* Line 0 is "cut" or "copy", so uris start at line 1. */
++        /* Line 0 is x-special/nautilus-clipboard. */
++        items = g_list_remove (items, items->data);
++        /* Line 1 is "cut" or "copy", so uris start at line 2. */
+         items = g_list_remove (items, items->data);
+     }
+ 
+@@ -174,13 +190,12 @@ void
+ nautilus_clipboard_clear_if_colliding_uris (GtkWidget   *widget,
+                                             const GList *item_uris)
+ {
+-    GtkSelectionData *data;
++    g_autofree gchar *data = NULL;
+     GList *clipboard_item_uris, *l;
+     gboolean collision;
+ 
+     collision = FALSE;
+-    data = gtk_clipboard_wait_for_contents (nautilus_clipboard_get (widget),
+-                                            copied_files_atom);
++    data = gtk_clipboard_wait_for_text (nautilus_clipboard_get (widget));
+     if (data == NULL)
+     {
+         return;
+@@ -210,14 +225,14 @@ nautilus_clipboard_clear_if_colliding_uris (GtkWidget   *widget,
+ }
+ 
+ gboolean
+-nautilus_clipboard_is_cut_from_selection_data (GtkSelectionData *selection_data)
++nautilus_clipboard_is_cut_from_selection_data (const gchar *selection_data)
+ {
+     GList *items;
+     gboolean is_cut_from_selection_data;
+ 
+     items = get_item_list_from_selection_data (selection_data);
+     is_cut_from_selection_data = items != NULL &&
+-                                 g_strcmp0 ((gchar *) items->data, "cut") == 0;
++                                 g_strcmp0 ((gchar *) items->next->data, "cut") == 0;
+ 
+     g_list_free_full (items, g_free);
+ 
+@@ -262,17 +277,8 @@ on_get_clipboard (GtkClipboard     *clipboard,
+         char *str;
+         gsize len;
+ 
+-        str = convert_file_list_to_string (clipboard_info, TRUE, &len);
+-        gtk_selection_data_set_text (selection_data, str, len);
+-        g_free (str);
+-    }
+-    else if (target == copied_files_atom)
+-    {
+-        char *str;
+-        gsize len;
+-
+         str = convert_file_list_to_string (clipboard_info, FALSE, &len);
+-        gtk_selection_data_set (selection_data, copied_files_atom, 8, (guchar *) str, len);
++        gtk_selection_data_set_text (selection_data, str, len);
+         g_free (str);
+     }
+ }
+@@ -303,7 +309,6 @@ nautilus_clipboard_prepare_for_files (GtkClipboard *clipboard,
+     clipboard_info->files = nautilus_file_list_copy (files);
+ 
+     target_list = gtk_target_list_new (NULL, 0);
+-    gtk_target_list_add (target_list, copied_files_atom, 0, 0);
+     gtk_target_list_add_uri_targets (target_list, 0);
+     gtk_target_list_add_text_targets (target_list, 0);
+ 
+@@ -317,13 +322,3 @@ nautilus_clipboard_prepare_for_files (GtkClipboard *clipboard,
+     gtk_target_table_free (targets, n_targets);
+ }
+ 
+-GdkAtom
+-nautilus_clipboard_get_atom (void)
+-{
+-    if (!copied_files_atom)
+-    {
+-        copied_files_atom = gdk_atom_intern_static_string ("x-special/gnome-copied-files");
+-    }
+-
+-    return copied_files_atom;
+-}
+diff --git a/src/nautilus-clipboard.h b/src/nautilus-clipboard.h
+index 613e983..3be19c9 100644
+--- a/src/nautilus-clipboard.h
++++ b/src/nautilus-clipboard.h
+@@ -28,11 +28,12 @@
+ void nautilus_clipboard_clear_if_colliding_uris    (GtkWidget          *widget,
+                                                     const GList        *item_uris);
+ GtkClipboard* nautilus_clipboard_get               (GtkWidget          *widget);
+-GList* nautilus_clipboard_get_uri_list_from_selection_data (GtkSelectionData   *selection_data);
+-gboolean nautilus_clipboard_is_cut_from_selection_data (GtkSelectionData *selection_data);
++GList* nautilus_clipboard_get_uri_list_from_selection_data (const gchar *selection_data);
++gboolean nautilus_clipboard_is_cut_from_selection_data (const gchar *selection_data);
+ void nautilus_clipboard_prepare_for_files (GtkClipboard *clipboard,
+                                            GList        *files,
+                                            gboolean      cut);
+ GdkAtom nautilus_clipboard_get_atom (void);
++gboolean nautilus_clipboard_is_data_valid_from_selection_data (const gchar *selection_data);
+ 
+ #endif /* NAUTILUS_CLIPBOARD_H */
+diff --git a/src/nautilus-files-view.c b/src/nautilus-files-view.c
+index 8aff33e..a74b691 100644
+--- a/src/nautilus-files-view.c
++++ b/src/nautilus-files-view.c
+@@ -2551,7 +2551,7 @@ action_open_item_new_window (GSimpleAction *action,
+ 
+ static void
+ handle_clipboard_data (NautilusFilesView *view,
+-                       GtkSelectionData  *selection_data,
++                       const gchar       *selection_data,
+                        char              *destination_uri,
+                        GdkDragAction      action)
+ {
+@@ -2576,7 +2576,7 @@ handle_clipboard_data (NautilusFilesView *view,
+ 
+ static void
+ paste_clipboard_data (NautilusFilesView *view,
+-                      GtkSelectionData  *selection_data,
++                      const gchar       *selection_data,
+                       char              *destination_uri)
+ {
+     GdkDragAction action;
+@@ -2594,9 +2594,9 @@ paste_clipboard_data (NautilusFilesView *view,
+ }
+ 
+ static void
+-paste_clipboard_received_callback (GtkClipboard     *clipboard,
+-                                   GtkSelectionData *selection_data,
+-                                   gpointer          data)
++paste_clipboard_text_received_callback (GtkClipboard     *clipboard,
++                                        const gchar      *selection_data,
++                                        gpointer          data)
+ {
+     NautilusFilesView *view;
+     NautilusFilesViewPrivate *priv;
+@@ -2629,16 +2629,15 @@ action_paste_files (GSimpleAction *action,
+     view = NAUTILUS_FILES_VIEW (user_data);
+ 
+     g_object_ref (view);
+-    gtk_clipboard_request_contents (nautilus_clipboard_get (GTK_WIDGET (view)),
+-                                    nautilus_clipboard_get_atom (),
+-                                    paste_clipboard_received_callback,
+-                                    view);
++    gtk_clipboard_request_text (nautilus_clipboard_get (GTK_WIDGET (view)),
++                                paste_clipboard_text_received_callback,
++                                view);
+ }
+ 
+ static void
+-create_links_clipboard_received_callback (GtkClipboard     *clipboard,
+-                                          GtkSelectionData *selection_data,
+-                                          gpointer          data)
++create_links_clipboard_received_callback (GtkClipboard *clipboard,
++                                          const gchar  *selection_data,
++                                          gpointer      data)
+ {
+     NautilusFilesView *view;
+     NautilusFilesViewPrivate *priv;
+@@ -2671,10 +2670,9 @@ action_create_links (GSimpleAction *action,
+     view = NAUTILUS_FILES_VIEW (user_data);
+ 
+     g_object_ref (view);
+-    gtk_clipboard_request_contents (nautilus_clipboard_get (GTK_WIDGET (view)),
+-                                    nautilus_clipboard_get_atom (),
+-                                    create_links_clipboard_received_callback,
+-                                    view);
++    gtk_clipboard_request_text (nautilus_clipboard_get (GTK_WIDGET (view)),
++                                create_links_clipboard_received_callback,
++                                view);
+ }
+ 
+ static void
+@@ -6016,9 +6014,9 @@ typedef struct
+ } PasteIntoData;
+ 
+ static void
+-paste_into_clipboard_received_callback (GtkClipboard     *clipboard,
+-                                        GtkSelectionData *selection_data,
+-                                        gpointer          callback_data)
++paste_into_clipboard_received_callback (GtkClipboard *clipboard,
++                                        const gchar  *selection_data,
++                                        gpointer      callback_data)
+ {
+     NautilusFilesViewPrivate *priv;
+     PasteIntoData *data;
+@@ -6058,10 +6056,9 @@ paste_into (NautilusFilesView *view,
+     data->view = g_object_ref (view);
+     data->target = nautilus_file_ref (target);
+ 
+-    gtk_clipboard_request_contents (nautilus_clipboard_get (GTK_WIDGET (view)),
+-                                    nautilus_clipboard_get_atom (),
+-                                    paste_into_clipboard_received_callback,
+-                                    data);
++    gtk_clipboard_request_text (nautilus_clipboard_get (GTK_WIDGET (view)),
++                                paste_into_clipboard_received_callback,
++                                data);
+ }
+ 
+ static void
+@@ -6925,18 +6922,19 @@ can_paste_into_file (NautilusFile *file)
+ }
+ 
+ static void
+-on_clipboard_contents_received (GtkClipboard     *clipboard,
+-                                GtkSelectionData *selection_data,
+-                                gpointer          user_data)
++on_clipboard_contents_received (GtkClipboard *clipboard,
++                                const gchar  *selection_data,
++                                gpointer      user_data)
+ {
+     NautilusFilesViewPrivate *priv;
+     NautilusFilesView *view;
+     gboolean can_link_from_copied_files;
+     gboolean settings_show_create_link;
+     gboolean is_read_only;
+     gboolean selection_contains_recent;
+     gboolean selection_contains_starred;
+     GAction *action;
++    gboolean is_data_valid;
+ 
+     view = NAUTILUS_FILES_VIEW (user_data);
+     priv = nautilus_files_view_get_instance_private (view);
+@@ -6949,77 +6947,41 @@ on_clipboard_contents_received (GtkClipboard     *clipboard,
+         return;
+     }
+ 
++    is_data_valid = nautilus_clipboard_is_data_valid_from_selection_data (selection_data);
+     settings_show_create_link = g_settings_get_boolean (nautilus_preferences,
+                                                         NAUTILUS_PREFERENCES_SHOW_CREATE_LINK);
+     is_read_only = nautilus_files_view_is_read_only (view);
+     selection_contains_recent = showing_recent_directory (view);
+     selection_contains_starred = showing_starred_directory (view);
+     can_link_from_copied_files = !nautilus_clipboard_is_cut_from_selection_data (selection_data) &&
+                                  !selection_contains_recent && !selection_contains_starred &&
+-                                 !is_read_only && gtk_selection_data_get_length (selection_data) > 0;
++                                 !is_read_only && selection_data != NULL;
+ 
+     action = g_action_map_lookup_action (G_ACTION_MAP (priv->view_action_group),
+                                          "create-link");
+     g_simple_action_set_enabled (G_SIMPLE_ACTION (action),
+                                  can_link_from_copied_files &&
+                                  settings_show_create_link);
+ 
+-    g_object_unref (view);
+-}
+-
+-static void
+-on_clipboard_targets_received (GtkClipboard *clipboard,
+-                               GdkAtom      *targets,
+-                               int           n_targets,
+-                               gpointer      user_data)
+-{
+-    NautilusFilesViewPrivate *priv;
+-    NautilusFilesView *view;
+-    gboolean is_data_copied;
+-    int i;
+-    GAction *action;
+-
+-    view = NAUTILUS_FILES_VIEW (user_data);
+-    priv = nautilus_files_view_get_instance_private (view);
+-    is_data_copied = FALSE;
+-
+-    if (priv->slot == NULL ||
+-        !priv->active)
+-    {
+-        /* We've been destroyed or became inactive since call */
+-        g_object_unref (view);
+-        return;
+-    }
+-
+-    if (targets)
+-    {
+-        for (i = 0; i < n_targets; i++)
+-        {
+-            if (targets[i] == nautilus_clipboard_get_atom ())
+-            {
+-                is_data_copied = TRUE;
+-            }
+-        }
+-    }
+-
+     action = g_action_map_lookup_action (G_ACTION_MAP (priv->view_action_group),
+                                          "paste");
+     /* Take into account if the action was previously disabled for other reasons,
+      * like the directory not being writabble */
+     g_simple_action_set_enabled (G_SIMPLE_ACTION (action),
+-                                 is_data_copied && g_action_get_enabled (action));
++                                 is_data_valid && g_action_get_enabled (action));
+ 
+     action = g_action_map_lookup_action (G_ACTION_MAP (priv->view_action_group),
+                                          "paste-into");
+ 
+     g_simple_action_set_enabled (G_SIMPLE_ACTION (action),
+-                                 is_data_copied && g_action_get_enabled (action));
++                                 is_data_valid && g_action_get_enabled (action));
+ 
+     action = g_action_map_lookup_action (G_ACTION_MAP (priv->view_action_group),
+                                          "create-link");
+ 
+     g_simple_action_set_enabled (G_SIMPLE_ACTION (action),
+-                                 is_data_copied && g_action_get_enabled (action));
++                                 is_data_valid && g_action_get_enabled (action));
++
+ 
+     g_object_unref (view);
+ }
+@@ -7565,18 +7527,10 @@ real_update_actions_state (NautilusFilesView *view)
+                                  !selection_contains_starred &&
+                                  priv->templates_present);
+ 
+-    /* Actions that are related to the clipboard need request, request the data
+-     * and update them once we have the data */
+-    g_object_ref (view);     /* Need to keep the object alive until we get the reply */
+-    gtk_clipboard_request_targets (nautilus_clipboard_get (GTK_WIDGET (view)),
+-                                   on_clipboard_targets_received,
+-                                   view);
+-
+     g_object_ref (view);     /* Need to keep the object alive until we get the reply */
+-    gtk_clipboard_request_contents (nautilus_clipboard_get (GTK_WIDGET (view)),
+-                                    nautilus_clipboard_get_atom (),
+-                                    on_clipboard_contents_received,
+-                                    view);
++    gtk_clipboard_request_text (nautilus_clipboard_get (GTK_WIDGET (view)),
++                                on_clipboard_contents_received,
++                                view);
+ 
+     action = g_action_map_lookup_action (G_ACTION_MAP (view_action_group),
+                                          "select-all");
+diff --git a/src/nautilus-list-view.c b/src/nautilus-list-view.c
+index d2ba388..4f65080 100644
+--- a/src/nautilus-list-view.c
++++ b/src/nautilus-list-view.c
+@@ -3628,9 +3628,9 @@ list_view_scroll_to_file (NautilusFilesView *view,
+ }
+ 
+ static void
+-on_clipboard_contents_received (GtkClipboard     *clipboard,
+-                                GtkSelectionData *selection_data,
+-                                gpointer          user_data)
++on_clipboard_contents_received (GtkClipboard *clipboard,
++                                const gchar  *selection_data,
++                                gpointer      user_data)
+ {
+     NautilusListView *view = NAUTILUS_LIST_VIEW (user_data);
+ 
+@@ -3665,10 +3665,9 @@ static void
+ update_clipboard_status (NautilusListView *view)
+ {
+     g_object_ref (view);     /* Need to keep the object alive until we get the reply */
+-    gtk_clipboard_request_contents (nautilus_clipboard_get (GTK_WIDGET (view)),
+-                                    nautilus_clipboard_get_atom (),
+-                                    on_clipboard_contents_received,
+-                                    view);
++    gtk_clipboard_request_text (nautilus_clipboard_get (GTK_WIDGET (view)),
++                                on_clipboard_contents_received,
++                                view);
+ }
+ 
+ static void
+--
+libgit2 0.26.0
+
