@@ -1,0 +1,54 @@
+From 2eed21b2dd3ec0cdd701f9c18e1e2582c69bdad8 Mon Sep 17 00:00:00 2001
+From: Timothy OBrien <obrien.timothy.a@gmail.com>
+Date: Mon, 14 Jan 2019 02:17:42 +1100
+Subject: [PATCH] org.gnome.Nautilus.appdata.xml.in.in: No screenshots in
+ appdata
+
+No screenshots were supplied by the appdata xml meaning that software install tools would not show them to the user.
+
+This commit proposes a set of screenshots hosted via the static-web project: https://gitlab.gnome.org/Infrastructure/static-web
+
+See static-web merge request https://gitlab.gnome.org/Infrastructure/static-web/merge_requests/2 for proposed screenshots.
+
+Fixes #556
+---
+ data/org.gnome.Nautilus.appdata.xml.in.in | 19 +++++++++++++++++++
+ 1 file changed, 19 insertions(+)
+
+diff --git a/data/org.gnome.Nautilus.appdata.xml.in.in b/data/org.gnome.Nautilus.appdata.xml.in.in
+index 30648b3e6..cb20fa05f 100644
+--- a/data/org.gnome.Nautilus.appdata.xml.in.in
++++ b/data/org.gnome.Nautilus.appdata.xml.in.in
+@@ -25,6 +25,24 @@
+     <kudo>Notifications</kudo>
+     <kudo>SearchProvider</kudo>
+   </kudos>
++  <screenshots>
++    <screenshot type="default">
++      <image>https://static.gnome.org/appdata/nautilus/nautilus-201901141.png</image>
++      <caption>Tile view</caption>
++    </screenshot>
++    <screenshot>
++      <image>https://static.gnome.org/appdata/nautilus/nautilus-201901142.png</image>
++      <caption>List view</caption>
++    </screenshot>
++    <screenshot>
++      <image>https://static.gnome.org/appdata/nautilus/nautilus-201901143.png</image>
++      <caption>Search</caption>
++    </screenshot>
++    <screenshot>
++      <image>https://static.gnome.org/appdata/nautilus/nautilus-201901144.png</image>
++      <caption>Other locations</caption>
++    </screenshot>
++  </screenshots>
+   <categories>
+     <category>System</category>
+   </categories>
+@@ -35,3 +53,4 @@
+   <url type="help">https://wiki.gnome.org/action/show/Apps/Nautilus</url>
+   <translation type="gettext">nautilus</translation>
+ </component>
++
+-- 
+2.21.0
+

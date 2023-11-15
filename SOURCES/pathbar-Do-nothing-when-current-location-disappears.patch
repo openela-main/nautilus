@@ -1,0 +1,16 @@
+diff --git a/src/nautilus-pathbar.c b/src/nautilus-pathbar.c
+index 630b8ed33..2fe88fe1d 100644
+--- a/src/nautilus-pathbar.c
++++ b/src/nautilus-pathbar.c
+@@ -2033,7 +2033,7 @@ button_data_file_changed (NautilusFile *file,
+         if (g_file_has_prefix (current_location, location) ||
+             g_file_equal (current_location, location))
+         {
+-            nautilus_path_bar_clear_buttons (self);
++            /* Do nothing here, the view will set new path if needed. */
+         }
+         else if (g_file_has_prefix (location, current_location))
+         {
+-- 
+2.40.0
+

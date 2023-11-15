@@ -1,0 +1,45 @@
+From 7cea30b7357cf246cbab67e895c90ebb5cc6a772 Mon Sep 17 00:00:00 2001
+From: Carlos Soriano <csoriano@gnome.org>
+Date: Wed, 8 Aug 2018 14:32:00 +0200
+Subject: [PATCH 10/11] dbus-manager: Fix double free
+
+nautilus_undo_manager_get doesn't return a new reference, so we
+shouldn't use g_autoptr.
+---
+ src/nautilus-dbus-manager.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/src/nautilus-dbus-manager.c b/src/nautilus-dbus-manager.c
+index 1ac6e12c2..728b1dea2 100644
+--- a/src/nautilus-dbus-manager.c
++++ b/src/nautilus-dbus-manager.c
+@@ -64,7 +64,7 @@ nautilus_dbus_manager_dispose (GObject *object)
+ static void
+ undo_redo_on_finished (gpointer user_data)
+ {
+-    g_autoptr (NautilusFileUndoManager) undo_manager = NULL;
++    NautilusFileUndoManager *undo_manager = NULL;
+     int *handler_id = (int *) user_data;
+ 
+     undo_manager = nautilus_file_undo_manager_get ();
+@@ -77,7 +77,7 @@ static gboolean
+ handle_redo (NautilusDBusFileOperations *object,
+              GDBusMethodInvocation      *invocation)
+ {
+-    g_autoptr (NautilusFileUndoManager) undo_manager = NULL;
++    NautilusFileUndoManager *undo_manager = NULL;
+     gint *handler_id = g_new0(int, 1);
+ 
+     undo_manager = nautilus_file_undo_manager_get ();
+@@ -94,7 +94,7 @@ static gboolean
+ handle_undo (NautilusDBusFileOperations *object,
+              GDBusMethodInvocation      *invocation)
+ {
+-    g_autoptr (NautilusFileUndoManager) undo_manager = NULL;
++    NautilusFileUndoManager *undo_manager = NULL;
+     gint *handler_id = g_new0(int, 1);
+ 
+     undo_manager = nautilus_file_undo_manager_get ();
+-- 
+2.17.1
+

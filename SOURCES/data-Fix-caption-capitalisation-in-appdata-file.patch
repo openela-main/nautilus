@@ -1,0 +1,44 @@
+From 51b543cd5106a8b929b336bc6779eddd4d2ac780 Mon Sep 17 00:00:00 2001
+From: Philip Withnall <withnall@endlessm.com>
+Date: Thu, 11 Apr 2019 12:36:21 +0100
+Subject: [PATCH] data: Fix caption capitalisation in appdata file
+
+Make the capitalisation of the image captions match the translatable
+titles of the dialogues in the images, so that translations can be
+reused.
+
+Signed-off-by: Philip Withnall <withnall@endlessm.com>
+---
+ data/org.gnome.Nautilus.appdata.xml.in.in | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/data/org.gnome.Nautilus.appdata.xml.in.in b/data/org.gnome.Nautilus.appdata.xml.in.in
+index cb20fa05f..cfc27e533 100644
+--- a/data/org.gnome.Nautilus.appdata.xml.in.in
++++ b/data/org.gnome.Nautilus.appdata.xml.in.in
+@@ -28,11 +28,11 @@
+   <screenshots>
+     <screenshot type="default">
+       <image>https://static.gnome.org/appdata/nautilus/nautilus-201901141.png</image>
+-      <caption>Tile view</caption>
++      <caption>Tile View</caption>
+     </screenshot>
+     <screenshot>
+       <image>https://static.gnome.org/appdata/nautilus/nautilus-201901142.png</image>
+-      <caption>List view</caption>
++      <caption>List View</caption>
+     </screenshot>
+     <screenshot>
+       <image>https://static.gnome.org/appdata/nautilus/nautilus-201901143.png</image>
+@@ -40,7 +40,7 @@
+     </screenshot>
+     <screenshot>
+       <image>https://static.gnome.org/appdata/nautilus/nautilus-201901144.png</image>
+-      <caption>Other locations</caption>
++      <caption>Other Locations</caption>
+     </screenshot>
+   </screenshots>
+   <categories>
+-- 
+2.21.0
+

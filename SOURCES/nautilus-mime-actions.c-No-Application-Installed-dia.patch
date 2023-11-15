@@ -1,0 +1,40 @@
+From 3c78251bc3bda455423807cb7fd5e25e7f8afd7e Mon Sep 17 00:00:00 2001
+From: Timothy OBrien <obrien.timothy.a@gmail.com>
+Date: Sun, 27 Jan 2019 12:45:28 +1100
+Subject: [PATCH] nautilus-mime-actions.c: No Application Installed dialog not
+ closed on GTK_RESPONSE_YES
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The "There is no application installed for “foo” files. Do you want to search for an application to open this file?" dialog that appears when there is no application installed to open the specific file type is not closed after clicking Yes. Instead, it reopens again.
+
+This patch removes code that was causing the file to be activated after the user clicked Yes; relaunching the dialog.
+
+Resolves #842
+---
+ src/nautilus-mime-actions.c | 8 --------
+ 1 file changed, 8 deletions(-)
+
+diff --git a/src/nautilus-mime-actions.c b/src/nautilus-mime-actions.c
+index 6f0ad9db5..5d1d5234e 100644
+--- a/src/nautilus-mime-actions.c
++++ b/src/nautilus-mime-actions.c
+@@ -1191,14 +1191,6 @@ search_for_application_dbus_call_notify_cb (GDBusProxy   *proxy,
+ 
+     g_variant_unref (variant);
+ 
+-    /* activate the file again */
+-    nautilus_mime_activate_files (parameters_install->parent_window,
+-                                  parameters_install->slot,
+-                                  parameters_install->files,
+-                                  parameters_install->activation_directory,
+-                                  parameters_install->flags,
+-                                  parameters_install->user_confirmation);
+-
+     activate_parameters_install_free (parameters_install);
+ }
+ 
+-- 
+2.26.0
+

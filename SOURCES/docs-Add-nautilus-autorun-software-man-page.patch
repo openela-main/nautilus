@@ -1,0 +1,61 @@
+From 6dd492663cbd3652ebc03d06898f74bacbf87683 Mon Sep 17 00:00:00 2001
+From: Ondrej Holy <oholy@redhat.com>
+Date: Wed, 3 Jul 2019 11:43:31 +0200
+Subject: [PATCH] docs: Add nautilus-autorun-software man page
+
+nautilus-autorun-software is the default "x-content/unix-software"
+handler for GNOME desktop. So it is not just internal tool and thus
+it should have a man page. Let's add a simple man page for it.
+
+It resolves the following downstream bug:
+https://bugzilla.redhat.com/show_bug.cgi?id=1725766
+---
+ docs/meson.build                 |  1 +
+ docs/nautilus-autorun-software.1 | 26 ++++++++++++++++++++++++++
+ 2 files changed, 27 insertions(+)
+ create mode 100644 docs/nautilus-autorun-software.1
+
+diff --git a/docs/meson.build b/docs/meson.build
+index b039cb631..a54574f3c 100644
+--- a/docs/meson.build
++++ b/docs/meson.build
+@@ -1,3 +1,4 @@
+ install_man('nautilus.1')
++install_man('nautilus-autorun-software.1')
+ 
+ subdir('reference')
+diff --git a/docs/nautilus-autorun-software.1 b/docs/nautilus-autorun-software.1
+new file mode 100644
+index 000000000..9ecbd4adb
+--- /dev/null
++++ b/docs/nautilus-autorun-software.1
+@@ -0,0 +1,26 @@
++.TH nautilus-autorun-software 1 "3 July 2019"
++
++.SH NAME
++Run Software \- helper tool
++
++.SH SYNOPSIS
++.B nautilus-autorun-software
++.RI "" "mount-uri"
++.br
++
++.SH DESCRIPTION
++.B nautilus-autorun-software
++is a helper tool for the GNOME desktop to start software from media with
++Autostart files.
++.br
++
++It is the default "x-content/unix-software" handler for the GNOME desktop.
++.br
++
++.SH SEE ALSO
++Autostart files are described at
++https://specifications.freedesktop.org/autostart-spec/autostart-spec-latest.html
++
++.SH BUGS
++Bug reports can be found and filed at
++https://gitlab.gnome.org/GNOME/nautilus/issues
+-- 
+2.21.0
+

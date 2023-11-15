@@ -1,0 +1,33 @@
+From c4b567936ebbba8479f6641c89b3980f7963b765 Mon Sep 17 00:00:00 2001
+From: Ondrej Holy <oholy@redhat.com>
+Date: Thu, 26 Sep 2019 11:07:35 +0200
+Subject: [PATCH] properties-window: Fix crashes when opened multiple times
+
+Nautilus crashes with segmentation fault when closing the properties dialog
+after it has been opened mutliple times for the same file. This can't be
+reproduced over Nautilus as it uses modal dialogs, however, it can be simply
+reproduced over the Desktop Icons extension. Let's check the pending_key
+variable before used to be sure it is not NULL to fix this crashes.
+---
+ src/nautilus-properties-window.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/src/nautilus-properties-window.c b/src/nautilus-properties-window.c
+index 0112aeb3c..f6b2f21a6 100644
+--- a/src/nautilus-properties-window.c
++++ b/src/nautilus-properties-window.c
+@@ -5297,7 +5297,10 @@ remove_pending (StartupData *startup_data,
+         eel_timed_wait_stop
+             (cancel_create_properties_window_callback, startup_data);
+     }
+-    g_hash_table_remove (pending_lists, startup_data->pending_key);
++    if (startup_data->pending_key != NULL)
++    {
++        g_hash_table_remove (pending_lists, startup_data->pending_key);
++    }
+ }
+ 
+ static gboolean
+-- 
+2.23.0
+

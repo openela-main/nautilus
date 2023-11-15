@@ -1,0 +1,400 @@
+diff -ruN nautilus-3.28.1/po/bg.po nautilus-3.28.1.translations/po/bg.po
+--- nautilus-3.28.1/po/bg.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/bg.po	2022-09-22 15:47:26.136428703 +0200
+@@ -5471,3 +5471,7 @@
+ 
+ #~ msgid "Enter server address…"
+ #~ msgstr "Въведете адреса на сървъра…"
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "_Копиране на местоположение"
+diff -ruN nautilus-3.28.1/po/ca.po nautilus-3.28.1.translations/po/ca.po
+--- nautilus-3.28.1/po/ca.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/ca.po	2022-09-22 15:47:26.165428628 +0200
+@@ -7061,3 +7061,7 @@
+ #~ "Amb el Nautilus heu d'haver rebut una còpia de la Llicència Pública "
+ #~ "General de GNU; si no és així, escriviu a la Free Software Foundation, "
+ #~ "Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA"
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "_Copia la ubicació"
+diff -ruN nautilus-3.28.1/po/cs.po nautilus-3.28.1.translations/po/cs.po
+--- nautilus-3.28.1/po/cs.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/cs.po	2022-09-22 15:47:26.181428586 +0200
+@@ -5665,3 +5665,7 @@
+ 
+ #~ msgid "org.gnome.Nautilus"
+ #~ msgstr "org.gnome.Nautilus"
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "Z_kopírovat umístění"
+diff -ruN nautilus-3.28.1/po/da.po nautilus-3.28.1.translations/po/da.po
+--- nautilus-3.28.1/po/da.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/da.po	2022-09-22 15:47:26.193428555 +0200
+@@ -7097,3 +7097,7 @@
+ 
+ #~ msgid "link"
+ #~ msgstr "henvisning"
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "_Kopiér placering"
+diff -ruN nautilus-3.28.1/po/de.po nautilus-3.28.1.translations/po/de.po
+--- nautilus-3.28.1/po/de.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/de.po	2022-09-22 15:47:26.201428534 +0200
+@@ -5716,3 +5716,7 @@
+ 
+ #~ msgid "org.gnome.Nautilus"
+ #~ msgstr "org.gnome.Nautilus"
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "Ort _kopieren"
+diff -ruN nautilus-3.28.1/po/el.po nautilus-3.28.1.translations/po/el.po
+--- nautilus-3.28.1/po/el.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/el.po	2022-09-22 15:47:26.214428501 +0200
+@@ -5910,3 +5910,8 @@
+ #~ msgstr ""
+ #~ "Ορίστε αυτό το όνομα αν θέλετε προσαρμοσμένο όνομα για το εικονίδιο του "
+ #~ "προσωπικού φακέλου στην επιφάνεια εργασίας."
++
++#
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "_Αντιγραφή τοποθεσίας"
+diff -ruN nautilus-3.28.1/po/en_GB.po nautilus-3.28.1.translations/po/en_GB.po
+--- nautilus-3.28.1/po/en_GB.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/en_GB.po	2022-09-22 15:47:26.228428464 +0200
+@@ -9935,3 +9935,7 @@
+ 
+ #~ msgid "Question"
+ #~ msgstr "Question"
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "_Copy Location"
+diff -ruN nautilus-3.28.1/po/es.po nautilus-3.28.1.translations/po/es.po
+--- nautilus-3.28.1/po/es.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/es.po	2022-09-22 15:47:26.246428418 +0200
+@@ -10830,3 +10830,8 @@
+ #~ msgstr ""
+ #~ "Nautilus es un shell gráfico para GNOME que facilita la administración de "
+ #~ "sus archivos y el resto de su sistema."
++
++# src/nautilus-location-bar.c:401
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "Copiar _ubicación"
+diff -ruN nautilus-3.28.1/po/eu.po nautilus-3.28.1.translations/po/eu.po
+--- nautilus-3.28.1/po/eu.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/eu.po	2022-09-22 15:47:26.257428389 +0200
+@@ -8066,3 +8066,7 @@
+ 
+ #~ msgid "Clear contents of Go menu and Back/Forward lists"
+ #~ msgstr "Joan menuaren eta Atzera/Aurrera zerrenden edukia garbitzen du"
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "_Kopiatu kokalekua"
+diff -ruN nautilus-3.28.1/po/fa.po nautilus-3.28.1.translations/po/fa.po
+--- nautilus-3.28.1/po/fa.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/fa.po	2022-09-22 15:47:26.268428361 +0200
+@@ -10082,3 +10082,7 @@
+ 
+ #~ msgid "C_ancel Remove"
+ #~ msgstr "ان_صراف از حذف"
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "_رونوشت از مکان"
+diff -ruN nautilus-3.28.1/po/fi.po nautilus-3.28.1.translations/po/fi.po
+--- nautilus-3.28.1/po/fi.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/fi.po	2022-09-22 15:47:26.278428335 +0200
+@@ -6969,3 +6969,7 @@
+ 
+ #~ msgid "_Up"
+ #~ msgstr "_Ylös"
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "Kopioi si_jainti"
+diff -ruN nautilus-3.28.1/po/fr.po nautilus-3.28.1.translations/po/fr.po
+--- nautilus-3.28.1/po/fr.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/fr.po	2022-09-22 15:47:26.286428314 +0200
+@@ -5975,3 +5975,7 @@
+ 
+ #~ msgid "Copying “%B” to “%B”"
+ #~ msgstr "Copie de « %B » vers « %B »"
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "Co_pier l’emplacement"
+diff -ruN nautilus-3.28.1/po/fur.po nautilus-3.28.1.translations/po/fur.po
+--- nautilus-3.28.1/po/fur.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/fur.po	2022-09-22 15:47:26.295428291 +0200
+@@ -7711,3 +7711,7 @@
+ 
+ #~ msgid "Set the zoom level of the current view"
+ #~ msgstr "Imposte il nivel di zoom de viodude atuâl"
++
++#: src/resources/ui/nautilus-files-view-context-menus.ui:34
++msgid "_Copy Location"
++msgstr "_Copie posizion"
+diff -ruN nautilus-3.28.1/po/gl.po nautilus-3.28.1.translations/po/gl.po
+--- nautilus-3.28.1/po/gl.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/gl.po	2022-09-22 15:47:26.315428239 +0200
+@@ -7429,3 +7429,7 @@
+ 
+ #~ msgid "<big><b>Error autorunning software</b></big>"
+ #~ msgstr "<big><b>Produciuse un erro ao autoexecutar o software</b></big>"
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "_Copiar localización"
+diff -ruN nautilus-3.28.1/po/he.po nautilus-3.28.1.translations/po/he.po
+--- nautilus-3.28.1/po/he.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/he.po	2022-09-22 15:47:26.336428185 +0200
+@@ -10468,3 +10468,7 @@
+ 
+ #~ msgid "Question"
+ #~ msgstr "שאלה"
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "ה_עתקת מיקום"
+diff -ruN nautilus-3.28.1/po/hr.po nautilus-3.28.1.translations/po/hr.po
+--- nautilus-3.28.1/po/hr.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/hr.po	2022-09-22 15:47:26.349428151 +0200
+@@ -6064,3 +6064,7 @@
+ 
+ #~ msgid "Re_verse Order"
+ #~ msgstr "Ob_rni poredak"
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "_Kopiraj lokaciju"
+diff -ruN nautilus-3.28.1/po/hu.po nautilus-3.28.1.translations/po/hu.po
+--- nautilus-3.28.1/po/hu.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/hu.po	2022-09-22 15:47:26.358428127 +0200
+@@ -5566,3 +5566,8 @@
+ 
+ #~ msgid "org.gnome.Nautilus"
+ #~ msgstr "org.gnome.Nautilus"
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++#| msgid "Location"
++msgid "_Copy Location"
++msgstr "Hely má_solása"
+diff -ruN nautilus-3.28.1/po/id.po nautilus-3.28.1.translations/po/id.po
+--- nautilus-3.28.1/po/id.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/id.po	2022-09-22 15:47:26.369428099 +0200
+@@ -5500,3 +5500,7 @@
+ #: src/gtk/nautilusgtkplacesview.ui:472
+ msgid "Enter server address…"
+ msgstr "Masukkan alamat server…"
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "_Salin Lokasi"
+diff -ruN nautilus-3.28.1/po/ka.po nautilus-3.28.1.translations/po/ka.po
+--- nautilus-3.28.1/po/ka.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/ka.po	2022-09-22 15:47:26.396428029 +0200
+@@ -6877,3 +6877,7 @@
+ 
+ #~ msgid "Video CD"
+ #~ msgstr "ვიდეო CD ფორმატში"
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "_მდებარეობის კოპირება"
+diff -ruN nautilus-3.28.1/po/kk.po nautilus-3.28.1.translations/po/kk.po
+--- nautilus-3.28.1/po/kk.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/kk.po	2022-09-22 15:47:26.405428006 +0200
+@@ -7442,3 +7442,7 @@
+ #~ msgstr ""
+ #~ "Қоқыс шелегін тазартуды таңдасаңыз, құрамасы жойылады. Оларды жеке-жеке "
+ #~ "өшіруге болатынын есте сақтаңыз."
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "Орналасуын _көшіріп алу"
+diff -ruN nautilus-3.28.1/po/ko.po nautilus-3.28.1.translations/po/ko.po
+--- nautilus-3.28.1/po/ko.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/ko.po	2022-09-22 15:47:26.421427964 +0200
+@@ -5763,3 +5763,7 @@
+ #~ msgctxt "shortcut window"
+ #~ msgid "Bookmarks"
+ #~ msgstr "책갈피"
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "위치 복사(_C)"
+diff -ruN nautilus-3.28.1/po/lt.po nautilus-3.28.1.translations/po/lt.po
+--- nautilus-3.28.1/po/lt.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/lt.po	2022-09-22 15:47:26.444427904 +0200
+@@ -7075,3 +7075,7 @@
+ 
+ #~ msgid "_Up"
+ #~ msgstr "_Aukštyn"
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "_Kopijuoti vietą"
+diff -ruN nautilus-3.28.1/po/lv.po nautilus-3.28.1.translations/po/lv.po
+--- nautilus-3.28.1/po/lv.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/lv.po	2022-09-22 15:47:26.453427881 +0200
+@@ -5648,3 +5648,8 @@
+ 
+ #~ msgid "org.gnome.Nautilus"
+ #~ msgstr "org.gnome.Nautilus"
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++#| msgid "Location"
++msgid "_Copy Location"
++msgstr "_Kopēt atrašanās vietu"
+diff -ruN nautilus-3.28.1/po/nl.po nautilus-3.28.1.translations/po/nl.po
+--- nautilus-3.28.1/po/nl.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/nl.po	2022-09-22 15:47:26.504427749 +0200
+@@ -6405,3 +6405,7 @@
+ 
+ #~ msgid "Move Dow_n"
+ #~ msgstr "Naar b_eneden"
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "Locatie _kopiëren"
+diff -ruN nautilus-3.28.1/po/oc.po nautilus-3.28.1.translations/po/oc.po
+--- nautilus-3.28.1/po/oc.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/oc.po	2022-09-22 15:47:26.520427708 +0200
+@@ -6999,3 +6999,7 @@
+ 
+ #~ msgid "Rename “%s”"
+ #~ msgstr "Renomenar lo fichièr « %s »"
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "_Copiar l'emplaçament"
+diff -ruN nautilus-3.28.1/po/pl.po nautilus-3.28.1.translations/po/pl.po
+--- nautilus-3.28.1/po/pl.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/pl.po	2022-09-22 15:47:26.535427669 +0200
+@@ -5683,3 +5683,7 @@
+ 
+ #~ msgid "org.gnome.Nautilus"
+ #~ msgstr "org.gnome.Nautilus"
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "S_kopiuj położenie"
+diff -ruN nautilus-3.28.1/po/pt_BR.po nautilus-3.28.1.translations/po/pt_BR.po
+--- nautilus-3.28.1/po/pt_BR.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/pt_BR.po	2022-09-22 15:47:26.547427638 +0200
+@@ -7152,3 +7152,7 @@
+ 
+ #~ msgid "_Bookmarks..."
+ #~ msgstr "_Marcadores..."
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "_Copiar local"
+diff -ruN nautilus-3.28.1/po/pt.po nautilus-3.28.1.translations/po/pt.po
+--- nautilus-3.28.1/po/pt.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/pt.po	2022-09-22 15:47:26.554427619 +0200
+@@ -5944,3 +5944,7 @@
+ 
+ #~ msgid "Whether the row represents a network location"
+ #~ msgstr "Se a linha representa uma localização de rede"
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "_Copiar localização"
+diff -ruN nautilus-3.28.1/po/ru.po nautilus-3.28.1.translations/po/ru.po
+--- nautilus-3.28.1/po/ru.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/ru.po	2022-09-22 15:47:26.567427586 +0200
+@@ -6177,3 +6177,7 @@
+ #~ msgctxt "Bookmark"
+ #~ msgid "_Name"
+ #~ msgstr "_Имя"
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "_Копировать адрес"
+diff -ruN nautilus-3.28.1/po/sl.po nautilus-3.28.1.translations/po/sl.po
+--- nautilus-3.28.1/po/sl.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/sl.po	2022-09-22 15:47:26.586427537 +0200
+@@ -7338,3 +7338,7 @@
+ 
+ #~ msgid "_About Files"
+ #~ msgstr "_O programu"
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "Kopiraj _mesto"
+diff -ruN nautilus-3.28.1/po/sr.po nautilus-3.28.1.translations/po/sr.po
+--- nautilus-3.28.1/po/sr.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/sr.po	2022-09-22 15:47:26.605427487 +0200
+@@ -7143,3 +7143,7 @@
+ #~ "ако нисте, пишите Задужбини слободног софтвера на следећу адресу: „Free "
+ #~ "Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA "
+ #~ "02110-1301 USA“"
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "_Копирај путању"
+diff -ruN nautilus-3.28.1/po/sv.po nautilus-3.28.1.translations/po/sv.po
+--- nautilus-3.28.1/po/sv.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/sv.po	2022-09-22 15:47:26.614427464 +0200
+@@ -6343,3 +6343,7 @@
+ 
+ #~ msgid "%a, %b %e %Y %T"
+ #~ msgstr "%a %-e %b %Y %T"
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "_Kopiera plats"
+diff -ruN nautilus-3.28.1/po/tr.po nautilus-3.28.1.translations/po/tr.po
+--- nautilus-3.28.1/po/tr.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/tr.po	2022-09-22 15:47:26.640427397 +0200
+@@ -6188,3 +6188,7 @@
+ 
+ #~ msgid "D_efault zoom level:"
+ #~ msgstr "Ön_tanımlı yaklaştırma seviyesi:"
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "Konumu _Kopyala"
+diff -ruN nautilus-3.28.1/po/uk.po nautilus-3.28.1.translations/po/uk.po
+--- nautilus-3.28.1/po/uk.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/uk.po	2022-09-22 15:47:26.652427365 +0200
+@@ -7967,3 +7967,7 @@
+ 
+ #~ msgid "Set the zoom level of the current view"
+ #~ msgstr "Встановити рівень масштабування поточного вікна"
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "_Копіювати адресу"
+diff -ruN nautilus-3.28.1/po/zh_CN.po nautilus-3.28.1.translations/po/zh_CN.po
+--- nautilus-3.28.1/po/zh_CN.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/zh_CN.po	2022-09-22 15:47:26.685427280 +0200
+@@ -5495,3 +5495,7 @@
+ 
+ #~ msgid "Zoom In"
+ #~ msgstr "放大"
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "复制位置(_C)"
+diff -ruN nautilus-3.28.1/po/zh_TW.po nautilus-3.28.1.translations/po/zh_TW.po
+--- nautilus-3.28.1/po/zh_TW.po	2018-04-09 22:02:06.000000000 +0200
++++ nautilus-3.28.1.translations/po/zh_TW.po	2022-09-22 15:47:26.698427246 +0200
+@@ -7283,3 +7283,7 @@
+ #~ "您應該已經和程式一起收到一份 GNU 通用公共許可證的副本。如果還沒有，寫信"
+ #~ "給：  the Free Software Foundation, Inc., 51 Franklin Street, Fifth "
+ #~ "Floor, Boston, MA 02110-1301 USA"
++
++#: src/resources/ui/nautilus-pathbar-context-menu.ui:53
++msgid "_Copy Location"
++msgstr "複製位置(_C)"

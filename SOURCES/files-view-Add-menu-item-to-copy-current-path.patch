@@ -1,0 +1,77 @@
+diff --git a/src/nautilus-files-view.c b/src/nautilus-files-view.c
+index 08107a64e..d808b04ff 100644
+--- a/src/nautilus-files-view.c
++++ b/src/nautilus-files-view.c
+@@ -6078,6 +6078,33 @@ action_cut (GSimpleAction *action,
+     nautilus_file_list_free (selection);
+ }
+ 
++static void
++action_copy_current_location (GSimpleAction *action,
++                              GVariant      *state,
++                              gpointer       user_data)
++{
++    NautilusFilesView *view;
++    GtkClipboard *clipboard;
++    GFile *file;
++    gchar *path;
++    NautilusFilesViewPrivate *priv;
++
++    view = NAUTILUS_FILES_VIEW (user_data);
++    priv = nautilus_files_view_get_instance_private (view);
++
++    if (priv->directory_as_file != NULL)
++    {
++        file = nautilus_file_get_location (priv->directory_as_file);
++
++        clipboard = nautilus_clipboard_get (GTK_WIDGET (view));
++        path = g_file_get_parse_name (file);
++        gtk_clipboard_set_text (clipboard, path, -1);
++
++        g_object_unref (file);
++        g_free (path);
++    }
++}
++
+ static void
+ action_create_links_in_place (GSimpleAction *action,
+                               GVariant      *state,
+@@ -6958,6 +6985,7 @@ const GActionEntry view_entries[] =
+     { "new-folder", action_new_folder },
+     { "select-all", action_select_all },
+     { "paste", action_paste_files },
++    { "copy-current-location", action_copy_current_location },
+     { "create-link", action_create_links },
+     { "new-document" },
+     /* Selection menu */
+@@ -7590,6 +7618,10 @@ real_update_actions_state (NautilusFilesView *view)
+     g_simple_action_set_enabled (G_SIMPLE_ACTION (action),
+                                  can_move_files && !selection_contains_recent &&
+                                  !selection_contains_starred);
++    action = g_action_map_lookup_action (G_ACTION_MAP (view_action_group),
++                                         "copy-current-location");
++    g_simple_action_set_enabled (G_SIMPLE_ACTION (action),
++                                 !selection_contains_search);
+ 
+     /* Drive menu */
+     show_mount = (selection != NULL);
+diff --git a/src/resources/ui/nautilus-pathbar-context-menu.ui b/src/resources/ui/nautilus-pathbar-context-menu.ui
+index 403cf71f6..4d32c1e8e 100644
+--- a/src/resources/ui/nautilus-pathbar-context-menu.ui
++++ b/src/resources/ui/nautilus-pathbar-context-menu.ui
+@@ -16,6 +16,12 @@
+       <attribute name="label" translatable="yes">Add to _Bookmarks</attribute>
+       <attribute name="action">view.bookmark</attribute>
+     </item>
++    <section>
++      <item>
++        <attribute name="label" translatable="yes">_Copy Location</attribute>
++        <attribute name="action">view.copy-current-location</attribute>
++      </item>
++    </section>
+     <section>
+       <item>
+         <attribute name="label" translatable="yes">_Paste</attribute>
+-- 
+2.36.1
+

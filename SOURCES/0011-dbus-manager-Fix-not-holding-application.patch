@@ -1,0 +1,36 @@
+From 12fa036ee7689774cfdf941ae7fda04d18d34ae8 Mon Sep 17 00:00:00 2001
+From: Carlos Soriano <csoriano@gnome.org>
+Date: Wed, 8 Aug 2018 14:32:56 +0200
+Subject: [PATCH 11/11] dbus-manager: Fix not holding application
+
+The code was releasing it on the callback but forgot to put the hold
+on the initial call.
+---
+ src/nautilus-dbus-manager.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/src/nautilus-dbus-manager.c b/src/nautilus-dbus-manager.c
+index 728b1dea2..f11ede0ad 100644
+--- a/src/nautilus-dbus-manager.c
++++ b/src/nautilus-dbus-manager.c
+@@ -80,6 +80,8 @@ handle_redo (NautilusDBusFileOperations *object,
+     NautilusFileUndoManager *undo_manager = NULL;
+     gint *handler_id = g_new0(int, 1);
+ 
++    g_application_hold (g_application_get_default ());
++
+     undo_manager = nautilus_file_undo_manager_get ();
+     *handler_id = g_signal_connect_swapped (undo_manager, "undo-changed",
+                                             G_CALLBACK (undo_redo_on_finished),
+@@ -97,6 +99,8 @@ handle_undo (NautilusDBusFileOperations *object,
+     NautilusFileUndoManager *undo_manager = NULL;
+     gint *handler_id = g_new0(int, 1);
+ 
++    g_application_hold (g_application_get_default ());
++
+     undo_manager = nautilus_file_undo_manager_get ();
+     *handler_id = g_signal_connect_swapped (undo_manager, "undo-changed",
+                                             G_CALLBACK (undo_redo_on_finished),
+-- 
+2.17.1
+

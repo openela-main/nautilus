@@ -1,0 +1,88 @@
+From 32f347bd83495edf2bda746d17e613c868a7c379 Mon Sep 17 00:00:00 2001
+From: Carlos Soriano <csoriano@redhat.com>
+Date: Tue, 7 Aug 2018 11:51:54 +0200
+Subject: [PATCH 05/11] file-operations: Don't crash if source file not present
+ on creation
+
+When creating a file it was checking if the file already exists, and if
+so it tried to give a new name based on the original file that was being
+duplicated from which is the case for the regular copy/paste and the
+template creation.
+
+However, creating a file is not only about duplicating from another one,
+it also can come from creating a folder, that although in the UI it
+prevents doing so, it can still be done through the dbus operation.
+
+Fix that by checking whether there is an actual source file, and if not,
+use the name provided as base name.
+---
+ src/nautilus-file-operations.c | 36 ++++++++++++++++------------------
+ 1 file changed, 17 insertions(+), 19 deletions(-)
+
+diff --git a/src/nautilus-file-operations.c b/src/nautilus-file-operations.c
+index 4d84b98be..cf5e7f46b 100644
+--- a/src/nautilus-file-operations.c
++++ b/src/nautilus-file-operations.c
+@@ -7324,20 +7324,18 @@ retry:
+             {
+                 g_autofree char *filename2 = NULL;
+                 g_autofree char *suffix = NULL;
+-                NautilusFile *file;
+ 
+-                file = nautilus_file_get (job->src);
+-                if (nautilus_file_is_directory (file))
+-                {
+-                    filename_base = filename;
+-                }
+-                else
++                filename_base = filename;
++                if (job->src != NULL)
+                 {
+-                    filename_base = eel_filename_strip_extension (filename);
++                    g_autoptr (NautilusFile) file = NULL;
++                    file = nautilus_file_get (job->src);
++                    if (!nautilus_file_is_directory (file))
++                    {
++                        filename_base = eel_filename_strip_extension (filename);
++                    }
+                 }
+ 
+-                nautilus_file_unref (file);
+-
+                 offset = strlen (filename_base);
+                 suffix = g_strdup (filename + offset);
+ 
+@@ -7377,21 +7375,21 @@ retry:
+         {
+             g_autofree char *suffix = NULL;
+             g_autofree gchar *filename2 = NULL;
+-            NautilusFile *file;
+ 
+             g_clear_object (&dest);
+ 
+-            file = nautilus_file_get (job->src);
+-            if (nautilus_file_is_directory (file))
+-            {
+-                filename_base = filename;
+-            }
+-            else
++            filename_base = filename;
++            if (job->src != NULL)
+             {
+-                filename_base = eel_filename_strip_extension (filename);
++                g_autoptr (NautilusFile) file = NULL;
++
++                file = nautilus_file_get (job->src);
++                if (!nautilus_file_is_directory (file))
++                {
++                    filename_base = eel_filename_strip_extension (filename);
++                }
+             }
+ 
+-            nautilus_file_unref (file);
+ 
+             offset = strlen (filename_base);
+             suffix = g_strdup (filename + offset);
+-- 
+2.17.1
+

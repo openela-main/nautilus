@@ -1,0 +1,33 @@
+From 33fafad8430ac32a750fd3315d507482c8028c15 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Ant=C3=B3nio=20Fernandes?= <antoniof@gnome.org>
+Date: Fri, 29 May 2020 13:16:11 +0100
+Subject: [PATCH] search-engine-tracker: Expand macro as string
+
+We have changed the FILENAME_RANK constant from being used as a format
+string argument to be concatenated as a string during compilation, as
+detailed in 7f00ede9b410e88106cef34c634cb46e46015e37
+
+However, I have forgotten to quote the constant, which otherwise cannot
+be treated as a string to concatenate.
+
+Fix that now.
+---
+ src/nautilus-search-engine-tracker.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/nautilus-search-engine-tracker.c b/src/nautilus-search-engine-tracker.c
+index 571467a25..13470a62e 100644
+--- a/src/nautilus-search-engine-tracker.c
++++ b/src/nautilus-search-engine-tracker.c
+@@ -290,7 +290,7 @@ search_finished_idle (gpointer user_data)
+  * not used). The value was determined experimentally. I am convinced that
+  * fts:rank is currently always set to 5.0 in case of filename match.
+  */
+-#define FILENAME_RANK 5.0
++#define FILENAME_RANK "5.0"
+ 
+ static void
+ nautilus_search_engine_tracker_start (NautilusSearchProvider *provider)
+-- 
+2.26.2
+

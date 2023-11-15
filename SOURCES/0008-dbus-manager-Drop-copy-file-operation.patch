@@ -1,0 +1,209 @@
+From 474ed07f64df1381440b8692d7d500d26014c618 Mon Sep 17 00:00:00 2001
+From: Carlos Soriano <csoriano@redhat.com>
+Date: Tue, 7 Aug 2018 21:25:01 +0200
+Subject: [PATCH 08/11] dbus-manager: Drop copy file operation
+
+It was truly unreliable and not working clearly. We have a more powerful
+and simpler API with CopyURIs, so there is no point to have this one.
+
+This commits drops the DBus API. Note that the DBus version is not
+bumped, I believe this DBus API is not used by any external service
+given how broken was it.
+---
+ data/dbus-interfaces.xml       |  6 ---
+ src/nautilus-dbus-manager.c    | 69 ++++++++++++++--------------------
+ src/nautilus-file-operations.c | 41 --------------------
+ src/nautilus-file-operations.h |  7 ----
+ 4 files changed, 29 insertions(+), 94 deletions(-)
+
+diff --git a/data/dbus-interfaces.xml b/data/dbus-interfaces.xml
+index 2133bb99c..20ffadde1 100644
+--- a/data/dbus-interfaces.xml
++++ b/data/dbus-interfaces.xml
+@@ -29,12 +29,6 @@
+     </method>
+     <method name='EmptyTrash'>
+     </method>"
+-    <method name='CopyFile'>
+-      <arg type='s' name='SourceFileURI' direction='in'/>
+-      <arg type='s' name='SourceDisplayName' direction='in'/>
+-      <arg type='s' name='DestinationDirectoryURI' direction='in'/>
+-      <arg type='s' name='DestinationDisplayName' direction='in'/>
+-    </method>
+     <method name='TrashFiles'>
+       <arg type='as' name='URIs' direction='in'/>
+     </method>
+diff --git a/src/nautilus-dbus-manager.c b/src/nautilus-dbus-manager.c
+index 0d5137292..1ac6e12c2 100644
+--- a/src/nautilus-dbus-manager.c
++++ b/src/nautilus-dbus-manager.c
+@@ -61,40 +61,6 @@ nautilus_dbus_manager_dispose (GObject *object)
+     G_OBJECT_CLASS (nautilus_dbus_manager_parent_class)->dispose (object);
+ }
+ 
+-static gboolean
+-handle_copy_file (NautilusDBusFileOperations *object,
+-                  GDBusMethodInvocation      *invocation,
+-                  const gchar                *source_uri,
+-                  const gchar                *source_display_name,
+-                  const gchar                *dest_dir_uri,
+-                  const gchar                *dest_name)
+-{
+-    GFile *source_file, *target_dir;
+-    const gchar *target_name = NULL, *source_name = NULL;
+-
+-    source_file = g_file_new_for_uri (source_uri);
+-    target_dir = g_file_new_for_uri (dest_dir_uri);
+-
+-    if (dest_name != NULL && dest_name[0] != '\0')
+-    {
+-        target_name = dest_name;
+-    }
+-
+-    if (source_display_name != NULL && source_display_name[0] != '\0')
+-    {
+-        source_name = source_display_name;
+-    }
+-
+-    nautilus_file_operations_copy_file (source_file, target_dir, source_name, target_name,
+-                                        NULL, NULL, NULL);
+-
+-    g_object_unref (source_file);
+-    g_object_unref (target_dir);
+-
+-    nautilus_dbus_file_operations_complete_copy_file (object, invocation);
+-    return TRUE; /* invocation was handled */
+-}
+-
+ static void
+ undo_redo_on_finished (gpointer user_data)
+ {
+@@ -173,9 +139,9 @@ handle_create_folder (NautilusDBusFileOperations *object,
+ }
+ 
+ static void
+-copy_on_finished (GHashTable *debutting_uris,
+-                  gboolean    success,
+-                  gpointer    callback_data)
++copy_move_on_finished (GHashTable *debutting_uris,
++                       gboolean    success,
++                       gpointer    callback_data)
+ {
+     g_application_release (g_application_get_default ());
+ }
+@@ -196,7 +162,30 @@ handle_copy_uris (NautilusDBusFileOperations  *object,
+ 
+     g_application_hold (g_application_get_default ());
+     nautilus_file_operations_copy_move (source_files, destination,
+-                                        GDK_ACTION_COPY, NULL, copy_on_finished, NULL);
++                                        GDK_ACTION_COPY, NULL, copy_move_on_finished, NULL);
++
++    g_list_free_full (source_files, g_free);
++    nautilus_dbus_file_operations_complete_copy_uris (object, invocation);
++    return TRUE; /* invocation was handled */
++}
++
++static gboolean
++handle_move_uris (NautilusDBusFileOperations  *object,
++                  GDBusMethodInvocation       *invocation,
++                  const gchar                **sources,
++                  const gchar                 *destination)
++{
++    GList *source_files = NULL;
++    gint idx;
++
++    for (idx = 0; sources[idx] != NULL; idx++)
++    {
++        source_files = g_list_prepend (source_files, g_strdup (sources[idx]));
++    }
++
++    g_application_hold (g_application_get_default ());
++    nautilus_file_operations_copy_move (source_files, destination,
++                                        GDK_ACTION_MOVE, NULL, copy_move_on_finished, NULL);
+ 
+     g_list_free_full (source_files, g_free);
+     nautilus_dbus_file_operations_complete_copy_uris (object, invocation);
+@@ -254,8 +243,8 @@ nautilus_dbus_manager_init (NautilusDBusManager *self)
+                       G_CALLBACK (handle_copy_uris),
+                       self);
+     g_signal_connect (self->file_operations,
+-                      "handle-copy-file",
+-                      G_CALLBACK (handle_copy_file),
++                      "handle-move-uris",
++                      G_CALLBACK (handle_move_uris),
+                       self);
+     g_signal_connect (self->file_operations,
+                       "handle-empty-trash",
+diff --git a/src/nautilus-file-operations.c b/src/nautilus-file-operations.c
+index cf5e7f46b..e306e7eff 100644
+--- a/src/nautilus-file-operations.c
++++ b/src/nautilus-file-operations.c
+@@ -5705,47 +5705,6 @@ copy_task_thread_func (GTask        *task,
+                 &source_info, &transfer_info);
+ }
+ 
+-void
+-nautilus_file_operations_copy_file (GFile                *source_file,
+-                                    GFile                *target_dir,
+-                                    const gchar          *source_display_name,
+-                                    const gchar          *new_name,
+-                                    GtkWindow            *parent_window,
+-                                    NautilusCopyCallback  done_callback,
+-                                    gpointer              done_callback_data)
+-{
+-    GTask *task;
+-    CopyMoveJob *job;
+-
+-    job = op_job_new (CopyMoveJob, parent_window);
+-    job->done_callback = done_callback;
+-    job->done_callback_data = done_callback_data;
+-    job->files = g_list_append (NULL, g_object_ref (source_file));
+-    job->destination = g_object_ref (target_dir);
+-    /* Need to indicate the destination for the operation notification open
+-     * button. */
+-    nautilus_progress_info_set_destination (((CommonJob *) job)->progress, target_dir);
+-    job->target_name = g_strdup (new_name);
+-    job->debuting_files = g_hash_table_new_full (g_file_hash, (GEqualFunc) g_file_equal, g_object_unref, NULL);
+-
+-    if (source_display_name != NULL)
+-    {
+-        gchar *path;
+-
+-        path = g_build_filename ("/", source_display_name, NULL);
+-        job->fake_display_source = g_file_new_for_path (path);
+-
+-        g_free (path);
+-    }
+-
+-    inhibit_power_manager ((CommonJob *) job, _("Copying Files"));
+-
+-    task = g_task_new (NULL, job->common.cancellable, copy_task_done, job);
+-    g_task_set_task_data (task, job, NULL);
+-    g_task_run_in_thread (task, copy_task_thread_func);
+-    g_object_unref (task);
+-}
+-
+ void
+ nautilus_file_operations_copy (GList                *files,
+                                GFile                *target_dir,
+diff --git a/src/nautilus-file-operations.h b/src/nautilus-file-operations.h
+index e8c6ed393..2a9c6a6a0 100644
+--- a/src/nautilus-file-operations.h
++++ b/src/nautilus-file-operations.h
+@@ -57,13 +57,6 @@ void nautilus_file_operations_copy_move   (const GList               *item_uris,
+ 					   GtkWidget                 *parent_view,
+ 					   NautilusCopyCallback       done_callback,
+ 					   gpointer                   done_callback_data);
+-void nautilus_file_operations_copy_file (GFile *source_file,
+-					 GFile *target_dir,
+-					 const gchar *source_display_name,
+-					 const gchar *new_name,
+-					 GtkWindow *parent_window,
+-					 NautilusCopyCallback done_callback,
+-					 gpointer done_callback_data);
+ void nautilus_file_operations_empty_trash (GtkWidget                 *parent_view);
+ void nautilus_file_operations_new_folder  (GtkWidget                 *parent_view,
+ 					   const char                *parent_dir_uri,
+-- 
+2.17.1
+
