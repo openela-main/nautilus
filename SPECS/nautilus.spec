@@ -8,7 +8,7 @@
 
 Name:           nautilus
 Version:        3.28.1
-Release:        23%{?dist}
+Release:        25%{?dist}
 Summary:        File manager for GNOME
 
 License:        GPLv3+
@@ -88,6 +88,13 @@ Patch41:        nautilus-canvas-container-Remove-the-include-visible.patch
 Patch42:        Revert-application-add-common-startup-code.patch
 Patch43:        application-Export-FileManager1-iface-from-dbus_regi.patch
 Patch44:        freedesktop-dbus-Try-to-own-the-name-until-after-exp.patch
+
+# https://bugzilla.redhat.com/show_bug.cgi?id=2100426
+Patch45:        window-slot-Try-current-location-even-if-it-is-marke.patch
+Patch46:        window-slot-Force-reload-current-location-when-it-re.patch
+Patch47:        pathbar-Do-nothing-when-current-location-disappears.patch
+Patch48:        file-utilities-Prevent-passing-NULL-to-g_object_unre.patch
+Patch49:        window-slot-Fix-conditions-to-restore-selection-when.patch
 
 BuildRequires:  gtk-doc
 BuildRequires:  meson
@@ -201,6 +208,12 @@ desktop-file-validate $RPM_BUILD_ROOT%{_datadir}/applications/*.desktop
 %{_datadir}/gir-1.0/*.gir
 
 %changelog
+* Wed Jun 14 2023 Ondrej Holy <oholy@redhat.com> - 3.28.1-25
+- Force reload current location when it reappears (#2100426)
+
+* Wed Apr 05 2023 Ondrej Holy <oholy@redhat.com> - 3.28.1-24
+- Try current location even if it is marked as gone (#2100426)
+
 * Thu Feb 23 2023 Ondrej Holy <oholy@redhat.com> - 3.28.1-23
 - Try to own the name until after exporting skeleton (#2150894)
 
