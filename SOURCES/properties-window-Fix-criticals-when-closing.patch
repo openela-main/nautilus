@@ -1,0 +1,32 @@
+From 97ec09e79d0a92f57ef6bb6b7e042921f5c3c3c8 Mon Sep 17 00:00:00 2001
+From: Ondrej Holy <oholy@redhat.com>
+Date: Tue, 24 Sep 2019 17:06:15 +0200
+Subject: [PATCH] properties-window: Fix criticals when closing
+
+The "eel_timed_wait_stop: assertion 'wait != NULL' failed" critical
+is printed when closing the properties window since commit c8c2fab2.
+This is because the timed wait has been already removed. Let's remove
+the wait when closing only if it has not been yet removed in order to
+prevent this criticals.
+
+Fixes: https://gitlab.gnome.org/GNOME/nautilus/issues/1075
+---
+ src/nautilus-properties-window.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/nautilus-properties-window.c b/src/nautilus-properties-window.c
+index 9d9bd1c54..969e3ffea 100644
+--- a/src/nautilus-properties-window.c
++++ b/src/nautilus-properties-window.c
+@@ -5240,7 +5240,7 @@ properties_window_finish (StartupData *data)
+                                               data);
+     }
+ 
+-    remove_pending (data, TRUE, TRUE, FALSE);
++    remove_pending (data, TRUE, (data->window == NULL), FALSE);
+     startup_data_free (data);
+ }
+ 
+-- 
+2.23.0
+

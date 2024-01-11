@@ -1,0 +1,88 @@
+From 42ea37f93c134d55cd622e3e346726babaf56139 Mon Sep 17 00:00:00 2001
+From: Carlos Soriano <csoriano@redhat.com>
+Date: Mon, 6 Aug 2018 20:12:00 +0200
+Subject: [PATCH 03/11] dbus-manager: Implement undo/redo
+
+For the integration with the desktop icons extension.
+---
+ data/dbus-interfaces.xml    |  4 ++++
+ src/nautilus-dbus-manager.c | 35 +++++++++++++++++++++++++++++++++++
+ 2 files changed, 39 insertions(+)
+
+diff --git a/data/dbus-interfaces.xml b/data/dbus-interfaces.xml
+index 4e67f1393..2133bb99c 100644
+--- a/data/dbus-interfaces.xml
++++ b/data/dbus-interfaces.xml
+@@ -41,5 +41,9 @@
+     <method name='CreateFolder'>
+       <arg type='s' name='URI' direction='in'/>
+     </method>
++    <method name='Undo'>
++    </method>
++    <method name='Redo'>
++    </method>
+   </interface>
+ </node>
+diff --git a/src/nautilus-dbus-manager.c b/src/nautilus-dbus-manager.c
+index 337a73262..bce6b5c4d 100644
+--- a/src/nautilus-dbus-manager.c
++++ b/src/nautilus-dbus-manager.c
+@@ -26,6 +26,7 @@
+ #include "nautilus-generated.h"
+ 
+ #include "nautilus-file-operations.h"
++#include "nautilus-file-undo-manager.h"
+ 
+ #define DEBUG_FLAG NAUTILUS_DEBUG_DBUS
+ #include "nautilus-debug.h"
+@@ -94,6 +95,32 @@ handle_copy_file (NautilusDBusFileOperations *object,
+     return TRUE; /* invocation was handled */
+ }
+ 
++static gboolean
++handle_redo (NautilusDBusFileOperations *object,
++             GDBusMethodInvocation      *invocation)
++{
++    g_autoptr (NautilusFileUndoManager) undo_manager = NULL;
++
++    undo_manager = nautilus_file_undo_manager_get ();
++    nautilus_file_undo_manager_redo (NULL);
++
++    nautilus_dbus_file_operations_complete_redo (object, invocation);
++    return TRUE; /* invocation was handled */
++}
++
++static gboolean
++handle_undo (NautilusDBusFileOperations *object,
++             GDBusMethodInvocation      *invocation)
++{
++    g_autoptr (NautilusFileUndoManager) undo_manager = NULL;
++
++    undo_manager = nautilus_file_undo_manager_get ();
++    nautilus_file_undo_manager_undo (NULL);
++
++    nautilus_dbus_file_operations_complete_undo (object, invocation);
++    return TRUE; /* invocation was handled */
++}
++
+ static gboolean
+ handle_create_folder (NautilusDBusFileOperations *object,
+                       GDBusMethodInvocation      *invocation,
+@@ -198,6 +225,14 @@ nautilus_dbus_manager_init (NautilusDBusManager *self)
+                       "handle-create-folder",
+                       G_CALLBACK (handle_create_folder),
+                       self);
++    g_signal_connect (self->file_operations,
++                      "handle-undo",
++                      G_CALLBACK (handle_undo),
++                      self);
++    g_signal_connect (self->file_operations,
++                      "handle-redo",
++                      G_CALLBACK (handle_redo),
++                      self);
+ }
+ 
+ static void
+-- 
+2.17.1
+

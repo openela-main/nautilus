@@ -1,0 +1,19 @@
+diff --git a/data/org.gnome.Nautilus.appdata.xml.in.in b/data/org.gnome.Nautilus.appdata.xml.in.in
+index 1e3986323..35e54cb14 100644
+--- a/data/org.gnome.Nautilus.appdata.xml.in.in
++++ b/data/org.gnome.Nautilus.appdata.xml.in.in
+@@ -2,11 +2,11 @@
+   <id>@appid@.desktop</id>
+   <metadata_license>CC0-1.0</metadata_license>
+   <project_license>GPL-2.0+</project_license>
+-  <name>Nautilus</name>
++  <name>Files</name>
+   <summary>Access and organize files</summary>
+   <description>
+     <p>
+-      Nautilus, also known as Files, is the default file manager of the GNOME desktop.
++      Files, also known as Nautilus, is the default file manager of the GNOME desktop.
+       It provides a  simple and integrated way of managing your files and browsing your file system.
+     </p>
+     <p>
+

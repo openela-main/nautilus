@@ -1,0 +1,46 @@
+From 13ecf5f9c2d219866550757cb660b569299ac285 Mon Sep 17 00:00:00 2001
+From: Ondrej Holy <oholy@redhat.com>
+Date: Mon, 2 Mar 2020 14:53:36 +0100
+Subject: [PATCH] properties-window: Fix endless content size calculations
+
+The total number of items and their size are shown in Properties dialog.
+
+However, the deep count calculations are currently restarted with each
+"changed" event of `NautilusFile` object(s). This is not usually a problem
+if only one file is selected, but it is a pretty big issue when more
+files are selected. It is common that the calculation never ends. This
+is because the "changed" events are emitted in many irrelevant cases
+(e.g. free space change) and it totally doesn't make sense to restart
+the calculation in most of the cases. The initial idea was to react
+on ongoing file operations, however, the calculation currently doesn't
+react on file changes deeper in the tree anyway, or on changes, which
+happened after the calculation is done. Thus the current result can be
+outdated anyway.
+
+Let's ignore `NautilusFile` changes at all when calculating the content
+size as it is pretty impossible to implement this properly to dynamically
+react on all size changes in the tree.
+
+Fixes: https://gitlab.gnome.org/GNOME/nautilus/issues/363
+---
+ src/nautilus-properties-window.c | 4 ----
+ 1 file changed, 4 deletions(-)
+
+diff --git a/src/nautilus-properties-window.c b/src/nautilus-properties-window.c
+index 9250adbe3..52a2b3fce 100644
+--- a/src/nautilus-properties-window.c
++++ b/src/nautilus-properties-window.c
+@@ -1137,10 +1137,6 @@ properties_window_update (NautilusPropertiesWindow *window,
+         {
+             dirty_target = TRUE;
+         }
+-        if (changed_file != NULL)
+-        {
+-            start_deep_count_for_file (window, changed_file);
+-        }
+     }
+ 
+     if (dirty_original)
+-- 
+2.26.0
+

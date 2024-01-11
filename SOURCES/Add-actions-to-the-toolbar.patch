@@ -1,0 +1,1196 @@
+diff --git a/src/nautilus-files-view.c b/src/nautilus-files-view.c
+index 0c7380ae9..08107a64e 100644
+--- a/src/nautilus-files-view.c
++++ b/src/nautilus-files-view.c
+@@ -146,6 +146,8 @@ enum
+     PROP_IS_LOADING,
+     PROP_LOCATION,
+     PROP_SEARCH_QUERY,
++    PROP_EXTENSIONS_BACKGROUND_MENU,
++    PROP_TEMPLATES_MENU,
+     NUM_PROPERTIES
+ };
+ 
+@@ -264,6 +266,10 @@ typedef struct
+     GtkWidget *zoom_controls_box;
+     GtkWidget *zoom_level_label;
+ 
++    /* Exposed menus, for the path bar etc. */
++    GMenu *extensions_background_menu;
++    GMenu *templates_menu;
++
+     gulong stop_signal_handler;
+     gulong reload_signal_handler;
+ 
+@@ -691,6 +697,98 @@ nautilus_files_view_get_toolbar_menu_sections (NautilusView *view)
+     return priv->toolbar_menu_sections;
+ }
+ 
++static GMenu*
++nautilus_files_view_get_templates_menu (NautilusView *self)
++{
++    GMenu *menu;
++
++    g_object_get (self, "templates-menu", &menu, NULL);
++
++    return menu;
++}
++
++static GMenu*
++nautilus_files_view_get_extensions_background_menu (NautilusView *self)
++{
++    GMenu *menu;
++
++    g_object_get (self, "extensions-background-menu", &menu, NULL);
++
++    return menu;
++}
++
++static GMenu*
++real_get_extensions_background_menu (NautilusView *view)
++{
++    NautilusFilesViewPrivate *priv;
++
++    g_return_val_if_fail (NAUTILUS_IS_FILES_VIEW (view), NULL);
++
++    priv = nautilus_files_view_get_instance_private (NAUTILUS_FILES_VIEW (view));
++
++    return priv->extensions_background_menu;
++}
++
++static GMenu*
++real_get_templates_menu (NautilusView *view)
++{
++    NautilusFilesViewPrivate *priv;
++
++    g_return_val_if_fail (NAUTILUS_IS_FILES_VIEW (view), NULL);
++
++    priv = nautilus_files_view_get_instance_private (NAUTILUS_FILES_VIEW (view));
++
++    return priv->templates_menu;
++}
++
++static void
++nautilus_files_view_set_templates_menu (NautilusView *self,
++                                        GMenu        *menu)
++{
++    g_object_set (self, "templates-menu", menu, NULL);
++}
++
++static void
++nautilus_files_view_set_extensions_background_menu (NautilusView *self,
++                                                    GMenu        *menu)
++{
++    g_object_set (self, "extensions-background-menu", menu, NULL);
++}
++
++static void
++real_set_extensions_background_menu (NautilusView *view,
++                                     GMenu        *menu)
++{
++    NautilusFilesViewPrivate *priv;
++
++    g_return_if_fail (NAUTILUS_IS_FILES_VIEW (view));
++
++    priv = nautilus_files_view_get_instance_private (NAUTILUS_FILES_VIEW (view));
++
++    if (priv->extensions_background_menu != NULL)
++    {
++        g_clear_object (&priv->extensions_background_menu);
++    }
++    priv->extensions_background_menu = menu;
++}
++
++static void
++real_set_templates_menu (NautilusView *view,
++                         GMenu        *menu)
++{
++    NautilusFilesViewPrivate *priv;
++
++    g_return_if_fail (NAUTILUS_IS_FILES_VIEW (view));
++
++    priv = nautilus_files_view_get_instance_private (NAUTILUS_FILES_VIEW (view));
++
++    if (priv->templates_menu != NULL)
++    {
++        g_clear_object (&priv->templates_menu);
++    }
++    priv->templates_menu = menu;
++}
++
+ static gboolean
+ showing_trash_directory (NautilusFilesView *view)
+ {
+@@ -2446,6 +2544,30 @@ action_properties (GSimpleAction *action,
+     }
+ }
+ 
++static void
++action_current_dir_properties (GSimpleAction *action,
++                               GVariant      *state,
++                               gpointer       user_data)
++{
++    NautilusFilesView *view;
++    NautilusFilesViewPrivate *priv;
++    GList *files;
++
++    g_return_if_fail (NAUTILUS_IS_FILES_VIEW (user_data));
++
++    view = NAUTILUS_FILES_VIEW (user_data);
++    priv = nautilus_files_view_get_instance_private (view);
++
++    if (priv->directory_as_file != NULL)
++    {
++        files = g_list_append (NULL, nautilus_file_ref (priv->directory_as_file));
++
++        nautilus_properties_window_present (files, GTK_WIDGET (view), NULL, NULL, NULL);
++
++        nautilus_file_list_free (files);
++    }
++}
++
+ static void
+ nautilus_files_view_set_show_hidden_files (NautilusFilesView *view,
+                                            gboolean           show_hidden)
+@@ -3192,6 +3314,8 @@ nautilus_files_view_finalize (GObject *object)
+     g_clear_object (&priv->selection_menu);
+     g_clear_object (&priv->toolbar_menu_sections->zoom_section);
+     g_clear_object (&priv->toolbar_menu_sections->extended_section);
++    g_clear_object (&priv->extensions_background_menu);
++    g_clear_object (&priv->templates_menu);
+     g_clear_object (&priv->rename_file_controller);
+     g_clear_object (&priv->new_folder_controller);
+     g_clear_object (&priv->compress_controller);
+@@ -4899,49 +5023,42 @@ build_menu_for_extension_menu_items (NautilusFilesView *view,
+     return gmenu;
+ }
+ 
+-static void
+-add_extension_menu_items (NautilusFilesView *view,
+-                          const gchar       *extension_prefix,
+-                          GList             *menu_items,
+-                          GMenu             *insertion_menu)
+-{
+-    GMenu *menu;
+-
+-    menu = build_menu_for_extension_menu_items (view, extension_prefix, menu_items);
+-    nautilus_gmenu_merge (insertion_menu,
+-                          menu,
+-                          "extensions",
+-                          FALSE);
+-
+-    g_object_unref (menu);
+-}
+-
+ static void
+ update_extensions_menus (NautilusFilesView *view)
+ {
+     NautilusFilesViewPrivate *priv;
+     GList *selection_items, *background_items;
++    g_autoptr (GMenu) background_menu = NULL;
++    g_autoptr (GMenu) selection_menu = NULL;
+ 
+     priv = nautilus_files_view_get_instance_private (view);
+     selection_items = get_extension_selection_menu_items (view);
+     if (selection_items != NULL)
+     {
+-        add_extension_menu_items (view,
+-                                  "selection",
+-                                  selection_items,
+-                                  priv->selection_menu);
++        selection_menu = build_menu_for_extension_menu_items (view, "extensions",
++                                                              selection_items);
++
++        nautilus_gmenu_merge (priv->selection_menu,
++                              selection_menu,
++                              "extensions",
++                              FALSE);
+         nautilus_menu_item_list_free (selection_items);
+     }
+ 
+     background_items = get_extension_background_menu_items (view);
+     if (background_items != NULL)
+     {
+-        add_extension_menu_items (view,
+-                                  "background",
+-                                  background_items,
+-                                  priv->background_menu);
++        background_menu = build_menu_for_extension_menu_items (view, "extensions",
++                                                               background_items);
++
++        nautilus_gmenu_merge (priv->background_menu,
++                              background_menu,
++                              "extensions",
++                              FALSE);
+         nautilus_menu_item_list_free (background_items);
+     }
++
++    nautilus_view_set_extensions_background_menu (NAUTILUS_VIEW (view), background_menu);
+ }
+ 
+ static char *
+@@ -5646,7 +5763,7 @@ update_templates_menu (NautilusFilesView *view)
+     NautilusFilesViewPrivate *priv;
+     GList *sorted_copy, *node;
+     NautilusDirectory *directory;
+-    GMenu *submenu;
++    g_autoptr (GMenu) submenu = NULL;
+     char *uri;
+     char *templates_directory_uri;
+ 
+@@ -5687,9 +5804,10 @@ update_templates_menu (NautilusFilesView *view)
+                               submenu,
+                               "templates-submenu",
+                               FALSE);
+-        g_object_unref (submenu);
+     }
+ 
++    nautilus_view_set_templates_menu (NAUTILUS_VIEW (view), submenu);
++
+     nautilus_directory_unref (directory);
+ 
+     priv->templates_present = submenu != NULL;
+@@ -6880,6 +6998,7 @@ const GActionEntry view_entries[] =
+     { "extract-to", action_extract_to },
+     { "compress", action_compress },
+     { "properties", action_properties},
++    { "current-directory-properties", action_current_dir_properties},
+     { "set-as-wallpaper", action_set_as_wallpaper },
+     { "mount-volume", action_mount_volume },
+     { "unmount-volume", action_unmount_volume },
+@@ -8871,8 +8990,25 @@ nautilus_files_view_get_property (GObject    *object,
+         }
+         break;
+ 
++        case PROP_EXTENSIONS_BACKGROUND_MENU:
++        {
++            g_value_set_object (value,
++                                real_get_extensions_background_menu (NAUTILUS_VIEW (view)));
++        }
++        break;
++
++        case PROP_TEMPLATES_MENU:
++        {
++            g_value_set_object (value,
++                                real_get_templates_menu (NAUTILUS_VIEW (view)));
++        }
++        break;
++
+         default:
++        {
+             g_assert_not_reached ();
++        }
++        break;
+     }
+ }
+ 
+@@ -8925,6 +9061,20 @@ nautilus_files_view_set_property (GObject      *object,
+         }
+         break;
+ 
++        case PROP_EXTENSIONS_BACKGROUND_MENU:
++        {
++            real_set_extensions_background_menu (NAUTILUS_VIEW (directory_view),
++                                                 g_value_get_object (value));
++        }
++        break;
++
++        case PROP_TEMPLATES_MENU:
++        {
++            real_set_templates_menu (NAUTILUS_VIEW (directory_view),
++                                     g_value_get_object (value));
++        }
++        break;
++
+         default:
+         {
+             G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+@@ -9286,6 +9436,10 @@ nautilus_files_view_iface_init (NautilusViewInterface *iface)
+     iface->is_searching = nautilus_files_view_is_searching;
+     iface->is_loading = nautilus_files_view_is_loading;
+     iface->get_view_id = nautilus_files_view_get_view_id;
++    iface->get_templates_menu = nautilus_files_view_get_templates_menu;
++    iface->set_templates_menu = nautilus_files_view_set_templates_menu;
++    iface->get_extensions_background_menu = nautilus_files_view_get_extensions_background_menu;
++    iface->set_extensions_background_menu = nautilus_files_view_set_extensions_background_menu;
+ }
+ 
+ static void
+@@ -9410,6 +9564,8 @@ nautilus_files_view_class_init (NautilusFilesViewClass *klass)
+     g_object_class_override_property (oclass, PROP_IS_SEARCH, "is-searching");
+     g_object_class_override_property (oclass, PROP_LOCATION, "location");
+     g_object_class_override_property (oclass, PROP_SEARCH_QUERY, "search-query");
++    g_object_class_override_property (oclass, PROP_EXTENSIONS_BACKGROUND_MENU, "extensions-background-menu");
++    g_object_class_override_property (oclass, PROP_TEMPLATES_MENU, "templates-menu");
+ }
+ 
+ static void
+diff --git a/src/nautilus-pathbar.c b/src/nautilus-pathbar.c
+index 630b8ed33..3681ce2d8 100644
+--- a/src/nautilus-pathbar.c
++++ b/src/nautilus-pathbar.c
+@@ -73,6 +73,7 @@ typedef struct
+     GtkWidget *image;
+     GtkWidget *label;
+     GtkWidget *bold_label;
++    GtkWidget *disclosure_arrow;
+ 
+     guint ignore_changes : 1;
+     guint is_root : 1;
+@@ -100,9 +101,13 @@ typedef struct
+ 
+     GActionGroup *action_group;
+ 
+-    GMenu *context_menu;
+     NautilusFile *context_menu_file;
+-    GdkEvent *context_menu_event;
++    GtkPopover *current_view_menu_popover;
++    GtkPopover *button_menu_popover;
++    GMenu *current_view_menu;
++    GMenu *button_menu;
++    GMenu *extensions_background_menu;
++    GMenu *templates_menu;
+ } NautilusPathBarPrivate;
+ 
+ 
+@@ -120,8 +125,9 @@ static gboolean nautilus_path_bar_slider_button_release (GtkWidget       *widget
+                                                          NautilusPathBar *self);
+ static void     nautilus_path_bar_check_icon_theme (NautilusPathBar *self);
+ static void     nautilus_path_bar_update_button_appearance (ButtonData *button_data);
+-static void     nautilus_path_bar_update_button_state (ButtonData *button_data,
+-                                                       gboolean    current_dir);
++static void     nautilus_path_bar_update_button_state (NautilusPathBar *self,
++                                                       ButtonData      *button_data,
++                                                       gboolean         current_dir);
+ static void     nautilus_path_bar_update_path (NautilusPathBar *self,
+                                                GFile           *file_path);
+ static void     unschedule_pop_up_context_menu (NautilusPathBar *self);
+@@ -134,6 +140,8 @@ static void     action_pathbar_open_item_new_tab (GSimpleAction *action,
+ static void     action_pathbar_properties (GSimpleAction *action,
+                                            GVariant      *state,
+                                            gpointer       user_data);
++static void     pop_up_pathbar_context_menu (NautilusPathBar *self,
++                                             NautilusFile    *file);
+ 
+ const GActionEntry path_bar_actions[] =
+ {
+@@ -333,7 +341,12 @@ nautilus_path_bar_init (NautilusPathBar *self)
+ 
+     /* Context menu */
+     builder = gtk_builder_new_from_resource ("/org/gnome/nautilus/ui/nautilus-pathbar-context-menu.ui");
+-    priv->context_menu = g_object_ref (G_MENU (gtk_builder_get_object (builder, "pathbar-menu")));
++    priv->current_view_menu = g_object_ref_sink (G_MENU (gtk_builder_get_object (builder, "current-view-menu")));
++    priv->button_menu = g_object_ref_sink (G_MENU (gtk_builder_get_object (builder, "button-menu")));
++    priv->current_view_menu_popover = g_object_ref_sink (GTK_POPOVER (gtk_popover_new_from_model (NULL,
++                                                                                                  G_MENU_MODEL (priv->current_view_menu))));
++    priv->button_menu_popover = g_object_ref_sink (GTK_POPOVER (gtk_popover_new_from_model (NULL,
++                                                                                            G_MENU_MODEL (priv->button_menu))));
+     g_object_unref (builder);
+ 
+     gtk_widget_set_has_window (GTK_WIDGET (self), FALSE);
+@@ -402,12 +415,12 @@ nautilus_path_bar_finalize (GObject *object)
+     }
+ 
+     g_list_free (priv->button_list);
++    g_clear_object (&priv->current_view_menu);
++    g_clear_object (&priv->button_menu);
++    g_clear_object (&priv->button_menu_popover);
++    g_clear_object (&priv->current_view_menu_popover);
+ 
+     unschedule_pop_up_context_menu (NAUTILUS_PATH_BAR (object));
+-    if (priv->context_menu_event)
+-    {
+-        gdk_event_free ((GdkEvent *) priv->context_menu_event);
+-    }
+ 
+     G_OBJECT_CLASS (nautilus_path_bar_parent_class)->finalize (object);
+ }
+@@ -1293,6 +1306,81 @@ nautilus_path_bar_class_init (NautilusPathBarClass *path_bar_class)
+     gtk_container_class_handle_border_width (container_class);
+ }
+ 
++static void
++update_current_view_menu (NautilusPathBar *self)
++{
++    NautilusPathBarPrivate *priv;
++
++    priv = nautilus_path_bar_get_instance_private (self);
++    if (priv->extensions_background_menu != NULL)
++    {
++        nautilus_gmenu_merge (priv->current_view_menu,
++                              priv->extensions_background_menu,
++                              "extensions",
++                              TRUE);
++    }
++
++    if (priv->templates_menu != NULL)
++    {
++        nautilus_gmenu_merge (priv->current_view_menu, priv->templates_menu,
++                              "templates-submenu", TRUE);
++    }
++}
++
++static void
++reset_current_view_menu (NautilusPathBar *self)
++{
++    NautilusPathBarPrivate *priv;
++    g_autoptr (GtkBuilder) builder = NULL;
++
++    priv = nautilus_path_bar_get_instance_private (self);
++
++    g_clear_object (&priv->current_view_menu);
++    builder = gtk_builder_new_from_resource ("/org/gnome/nautilus/ui/nautilus-pathbar-context-menu.ui");
++    priv->current_view_menu = g_object_ref_sink (G_MENU (gtk_builder_get_object (builder,
++                                                                                 "current-view-menu")));
++    gtk_popover_bind_model (priv->current_view_menu_popover,
++                            G_MENU_MODEL (priv->current_view_menu), NULL);
++}
++
++void
++nautilus_path_bar_set_extensions_background_menu (NautilusPathBar *self,
++                                                  GMenu           *menu)
++{
++    NautilusPathBarPrivate *priv;
++
++    g_return_if_fail (NAUTILUS_IS_PATH_BAR (self));
++
++    priv = nautilus_path_bar_get_instance_private (self);
++    reset_current_view_menu (self);
++    g_clear_object (&priv->extensions_background_menu);
++    if (menu != NULL)
++    {
++        priv->extensions_background_menu = g_object_ref (menu);
++    }
++
++    update_current_view_menu (self);
++}
++
++void
++nautilus_path_bar_set_templates_menu (NautilusPathBar *self,
++                                      GMenu           *menu)
++{
++    NautilusPathBarPrivate *priv;
++
++    g_return_if_fail (NAUTILUS_IS_PATH_BAR (self));
++
++    priv = nautilus_path_bar_get_instance_private (self);
++    reset_current_view_menu (self);
++    g_clear_object (&priv->templates_menu);
++    if (menu != NULL)
++    {
++        priv->templates_menu = g_object_ref (menu);
++    }
++
++    update_current_view_menu (self);
++}
++
+ static void
+ nautilus_path_bar_scroll_down (NautilusPathBar *self)
+ {
+@@ -1599,7 +1687,9 @@ button_clicked_cb (GtkWidget *button,
+     ButtonData *button_data;
+     NautilusPathBarPrivate *priv;
+     NautilusPathBar *self;
+-    GList *button_list;
++    GdkEvent *event;
++    GdkModifierType state;
++    gboolean current_dir;
+ 
+     button_data = BUTTON_DATA (data);
+     if (button_data->ignore_changes)
+@@ -1609,13 +1699,29 @@ button_clicked_cb (GtkWidget *button,
+ 
+     self = NAUTILUS_PATH_BAR (gtk_widget_get_parent (button));
+     priv = nautilus_path_bar_get_instance_private (self);
++    event = gtk_get_current_event ();
++    current_dir = g_file_equal (button_data->path, priv->current_path);
+ 
+-    button_list = g_list_find (priv->button_list, button_data);
+-    g_assert (button_list != NULL);
++    gdk_event_get_state (event, &state);
+ 
+-    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button), TRUE);
++    button_data->ignore_changes = TRUE;
++    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button), current_dir);
++    button_data->ignore_changes = FALSE;
+ 
+-    g_signal_emit (self, path_bar_signals [PATH_CLICKED], 0, button_data->path);
++    if ((state & GDK_CONTROL_MASK) != 0)
++    {
++        g_signal_emit (self, path_bar_signals[OPEN_LOCATION], 0,
++                       button_data->path,
++                       GTK_PLACES_OPEN_NEW_WINDOW);
++    }
++    else if (current_dir)
++    {
++        gtk_popover_popup (priv->current_view_menu_popover);
++    }
++    else
++    {
++        g_signal_emit (self, path_bar_signals [PATH_CLICKED], 0, button_data->path);
++    }
+ }
+ 
+ 
+@@ -1626,9 +1732,7 @@ real_pop_up_pathbar_context_menu (NautilusPathBar *self)
+ 
+     priv = nautilus_path_bar_get_instance_private (self);
+ 
+-    nautilus_pop_up_context_menu_at_pointer (GTK_WIDGET (self),
+-                                             priv->context_menu,
+-                                             priv->context_menu_event);
++    gtk_popover_popup (priv->button_menu_popover);
+ }
+ 
+ static void
+@@ -1668,7 +1772,6 @@ unschedule_pop_up_context_menu (NautilusPathBar *self)
+ 
+ static void
+ schedule_pop_up_context_menu (NautilusPathBar *self,
+-                              GdkEventButton  *event,
+                               NautilusFile    *file)
+ {
+     NautilusPathBarPrivate *priv;
+@@ -1677,12 +1780,6 @@ schedule_pop_up_context_menu (NautilusPathBar *self,
+ 
+     priv = nautilus_path_bar_get_instance_private (self);
+ 
+-    if (priv->context_menu_event != NULL)
+-    {
+-        gdk_event_free ((GdkEvent *) priv->context_menu_event);
+-    }
+-    priv->context_menu_event = gdk_event_copy ((GdkEvent *) event);
+-
+     if (file == priv->context_menu_file)
+     {
+         if (nautilus_file_check_if_ready (file,
+@@ -1709,12 +1806,11 @@ schedule_pop_up_context_menu (NautilusPathBar *self,
+ 
+ static void
+ pop_up_pathbar_context_menu (NautilusPathBar *self,
+-                             GdkEventButton  *event,
+                              NautilusFile    *file)
+ {
+     if (file)
+     {
+-        schedule_pop_up_context_menu (self, event, file);
++        schedule_pop_up_context_menu (self, file);
+     }
+ }
+ 
+@@ -1723,22 +1819,31 @@ button_event_cb (GtkWidget      *button,
+                  GdkEventButton *event,
+                  gpointer        data)
+ {
+-    GtkPlacesOpenFlags flags;
+     ButtonData *button_data;
+     NautilusPathBar *self;
++    NautilusPathBarPrivate *priv;
+     int mask;
++    gboolean current_dir;
+ 
+     button_data = BUTTON_DATA (data);
+     self = NAUTILUS_PATH_BAR (gtk_widget_get_parent (button));
++    priv = nautilus_path_bar_get_instance_private (self);
+     mask = event->state & gtk_accelerator_get_default_mod_mask ();
+ 
+     if (event->type == GDK_BUTTON_PRESS)
+     {
+-        g_object_set_data (G_OBJECT (button), "handle-button-release", GINT_TO_POINTER (TRUE));
+-
+         if (event->button == GDK_BUTTON_SECONDARY)
+         {
+-            pop_up_pathbar_context_menu (self, event, button_data->file);
++            current_dir = g_file_equal (button_data->path, priv->current_path);
++            if (current_dir)
++            {
++                gtk_popover_popup (priv->current_view_menu_popover);
++            }
++            else
++            {
++                gtk_popover_set_relative_to (priv->button_menu_popover, button);
++                pop_up_pathbar_context_menu (self, button_data->file);
++            }
+             return GDK_EVENT_STOP;
+         }
+         else if (event->button == GDK_BUTTON_MIDDLE && mask == 0)
+@@ -1751,27 +1856,6 @@ button_event_cb (GtkWidget      *button,
+             return GDK_EVENT_STOP;
+         }
+     }
+-    else if (event->type == GDK_BUTTON_RELEASE)
+-    {
+-        flags = 0;
+-
+-        if (!GPOINTER_TO_UINT (g_object_get_data (G_OBJECT (button), "handle-button-release")))
+-        {
+-            return GDK_EVENT_PROPAGATE;
+-        }
+-
+-        if (event->button == GDK_BUTTON_PRIMARY && mask == GDK_CONTROL_MASK)
+-        {
+-            flags = GTK_PLACES_OPEN_NEW_WINDOW;
+-        }
+-
+-        if (flags != 0)
+-        {
+-            g_signal_emit (self, path_bar_signals[OPEN_LOCATION], 0, button_data->path, flags);
+-        }
+-
+-        return GDK_EVENT_PROPAGATE;
+-    }
+ 
+     return GDK_EVENT_PROPAGATE;
+ }
+@@ -1880,9 +1964,14 @@ nautilus_path_bar_update_button_appearance (ButtonData *button_data)
+ }
+ 
+ static void
+-nautilus_path_bar_update_button_state (ButtonData *button_data,
+-                                       gboolean    current_dir)
++nautilus_path_bar_update_button_state (NautilusPathBar *self,
++                                       ButtonData      *button_data,
++                                       gboolean         current_dir)
+ {
++    NautilusPathBarPrivate *priv;
++
++    priv = nautilus_path_bar_get_instance_private (self);
++
+     if (button_data->label != NULL)
+     {
+         gtk_label_set_label (GTK_LABEL (button_data->label), NULL);
+@@ -1898,6 +1987,12 @@ nautilus_path_bar_update_button_state (ButtonData *button_data,
+         gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button_data->button), current_dir);
+         button_data->ignore_changes = FALSE;
+     }
++
++    gtk_widget_set_visible (button_data->disclosure_arrow, current_dir);
++    if (current_dir)
++    {
++        gtk_popover_set_relative_to (priv->current_view_menu_popover, button_data->button);
++    }
+ }
+ 
+ static void
+@@ -2096,13 +2191,17 @@ make_button_data (NautilusPathBar *self,
+     /* TODO update button type when xdg directories change */
+ 
+     button_data->image = gtk_image_new ();
++    button_data->disclosure_arrow = gtk_image_new_from_icon_name ("pan-down-symbolic",
++                                                                  GTK_ICON_SIZE_MENU);
+ 
+     switch (button_data->type)
+     {
+         case ROOT_BUTTON:
+         {
+-            child = button_data->image;
+             button_data->label = NULL;
++            child = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 2);
++            gtk_box_pack_start (GTK_BOX (child), button_data->image, FALSE, FALSE, 0);
++            gtk_box_pack_start (GTK_BOX (child), button_data->disclosure_arrow, FALSE, FALSE, 0);
+         }
+         break;
+ 
+@@ -2115,10 +2214,13 @@ make_button_data (NautilusPathBar *self,
+             child = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 2);
+             gtk_box_pack_start (GTK_BOX (child), button_data->image, FALSE, FALSE, 0);
+             gtk_box_pack_start (GTK_BOX (child), button_data->label, FALSE, FALSE, 0);
++            gtk_box_pack_start (GTK_BOX (child), button_data->disclosure_arrow, FALSE, FALSE, 0);
+         }
+         break;
+     }
+ 
++    gtk_widget_set_no_show_all (button_data->disclosure_arrow, TRUE);
++
+     if (button_data->label != NULL)
+     {
+         gtk_label_set_ellipsize (GTK_LABEL (button_data->label), PANGO_ELLIPSIZE_MIDDLE);
+@@ -2152,11 +2254,10 @@ make_button_data (NautilusPathBar *self,
+     gtk_container_add (GTK_CONTAINER (button_data->button), child);
+     gtk_widget_show_all (button_data->button);
+ 
+-    nautilus_path_bar_update_button_state (button_data, current_dir);
++    nautilus_path_bar_update_button_state (self, button_data, current_dir);
+ 
+     g_signal_connect (button_data->button, "clicked", G_CALLBACK (button_clicked_cb), button_data);
+     g_signal_connect (button_data->button, "button-press-event", G_CALLBACK (button_event_cb), button_data);
+-    g_signal_connect (button_data->button, "button-release-event", G_CALLBACK (button_event_cb), button_data);
+     g_object_weak_ref (G_OBJECT (button_data->button), (GWeakNotify) button_data_free, button_data);
+ 
+     nautilus_drag_slot_proxy_init (button_data->button, button_data->file, NULL);
+@@ -2198,7 +2299,7 @@ nautilus_path_bar_check_parent_path (NautilusPathBar  *self,
+             is_active = FALSE;
+         }
+ 
+-        nautilus_path_bar_update_button_state (button_data, is_active);
++        nautilus_path_bar_update_button_state (self, button_data, is_active);
+     }
+ 
+     if (current_button_data != NULL)
+diff --git a/src/nautilus-pathbar.h b/src/nautilus-pathbar.h
+index 8651b7bc2..cbe427cf7 100644
+--- a/src/nautilus-pathbar.h
++++ b/src/nautilus-pathbar.h
+@@ -36,5 +36,9 @@ struct _NautilusPathBarClass
+                                      GtkPlacesOpenFlags flags);
+ };
+ void     nautilus_path_bar_set_path    (NautilusPathBar *self, GFile *file);
++void     nautilus_path_bar_set_extensions_background_menu (NautilusPathBar *self,
++                                                           GMenu           *menu);
++void     nautilus_path_bar_set_templates_menu (NautilusPathBar *self,
++                                               GMenu           *menu);
+ 
+ #endif /* NAUTILUS_PATHBAR_H */
+diff --git a/src/nautilus-toolbar.c b/src/nautilus-toolbar.c
+index 26a978e7d..18e0421de 100644
+--- a/src/nautilus-toolbar.c
++++ b/src/nautilus-toolbar.c
+@@ -1199,6 +1199,24 @@ nautilus_toolbar_set_show_location_entry (NautilusToolbar *self,
+     }
+ }
+ 
++static void
++slot_on_extensions_background_menu_changed (NautilusToolbar    *self,
++                                            GParamSpec         *param,
++                                            NautilusWindowSlot *slot)
++{
++    nautilus_path_bar_set_extensions_background_menu (NAUTILUS_PATH_BAR (self->path_bar),
++                                                      nautilus_window_slot_get_extensions_background_menu (slot));
++}
++
++static void
++slot_on_templates_menu_changed (NautilusToolbar    *self,
++                                GParamSpec         *param,
++                                NautilusWindowSlot *slot)
++{
++    nautilus_path_bar_set_templates_menu (NAUTILUS_PATH_BAR (self->path_bar),
++                                          nautilus_window_slot_get_templates_menu (slot));
++}
++
+ static gboolean
+ nautilus_toolbar_view_toggle_icon_transform_to (GBinding     *binding,
+                                                 const GValue *from_value,
+@@ -1304,6 +1322,10 @@ nautilus_toolbar_set_active_slot (NautilusToolbar    *toolbar,
+             on_slot_toolbar_menu_sections_changed (toolbar, NULL, slot);
+             g_signal_connect_swapped (slot, "notify::toolbar-menu-sections",
+                                       G_CALLBACK (on_slot_toolbar_menu_sections_changed), toolbar);
++            g_signal_connect_swapped (slot, "notify::extensions-background-menu",
++                                      G_CALLBACK (slot_on_extensions_background_menu_changed), toolbar);
++            g_signal_connect_swapped (slot, "notify::templates-menu",
++                                      G_CALLBACK (slot_on_templates_menu_changed), toolbar);
+         }
+     }
+ }
+diff --git a/src/nautilus-view.c b/src/nautilus-view.c
+index 7b3a3c973..a1c32f248 100644
+--- a/src/nautilus-view.c
++++ b/src/nautilus-view.c
+@@ -72,6 +72,29 @@ nautilus_view_default_init (NautilusViewInterface *iface)
+                                                               "The search query being performed on the view",
+                                                               NAUTILUS_TYPE_QUERY,
+                                                               G_PARAM_READWRITE));
++
++    /**
++     * NautilusView::extensions-background-menu:
++     *
++     * Menu for the background click of extensions
++     */
++    g_object_interface_install_property (iface,
++                                         g_param_spec_object ("extensions-background-menu",
++                                                              "Menu for the background click of extensions",
++                                                              "Menu for the background click of extensions",
++                                                              G_TYPE_MENU,
++                                                              G_PARAM_READWRITE));
++    /**
++     * NautilusView::templates-menu:
++     *
++     * Menu of templates
++     */
++    g_object_interface_install_property (iface,
++                                         g_param_spec_object ("templates-menu",
++                                                              "Menu of templates",
++                                                              "Menu of templates",
++                                                              G_TYPE_MENU,
++                                                              G_PARAM_READWRITE));
+ }
+ 
+ /**
+@@ -137,6 +160,42 @@ nautilus_view_get_toolbar_menu_sections (NautilusView *view)
+     return NAUTILUS_VIEW_GET_IFACE (view)->get_toolbar_menu_sections (view);
+ }
+ 
++GMenu *
++nautilus_view_get_extensions_background_menu (NautilusView *view)
++{
++    g_return_val_if_fail (NAUTILUS_VIEW_GET_IFACE (view)->get_extensions_background_menu, NULL);
++
++    return NAUTILUS_VIEW_GET_IFACE (view)->get_extensions_background_menu (view);
++}
++
++/* Protected */
++void
++nautilus_view_set_extensions_background_menu (NautilusView *view,
++                                              GMenu        *menu)
++{
++    g_return_if_fail (NAUTILUS_VIEW_GET_IFACE (view)->set_extensions_background_menu);
++
++    NAUTILUS_VIEW_GET_IFACE (view)->set_extensions_background_menu (view, menu);
++}
++
++GMenu *
++nautilus_view_get_templates_menu (NautilusView *view)
++{
++    g_return_val_if_fail (NAUTILUS_VIEW_GET_IFACE (view)->get_templates_menu, NULL);
++
++    return NAUTILUS_VIEW_GET_IFACE (view)->get_templates_menu (view);
++}
++
++/* Protected */
++void
++nautilus_view_set_templates_menu (NautilusView *view,
++                                  GMenu        *menu)
++{
++    g_return_if_fail (NAUTILUS_VIEW_GET_IFACE (view)->set_templates_menu);
++
++    NAUTILUS_VIEW_GET_IFACE (view)->set_templates_menu (view, menu);
++}
++
+ /**
+  * nautilus_view_get_search_query:
+  * @view: a #NautilusView
+diff --git a/src/nautilus-view.h b/src/nautilus-view.h
+index dcd39e0ad..c3042bebd 100644
+--- a/src/nautilus-view.h
++++ b/src/nautilus-view.h
+@@ -52,6 +52,20 @@ struct _NautilusViewInterface
+          */
+         NautilusToolbarMenuSections *   (*get_toolbar_menu_sections) (NautilusView         *view);
+ 
++        /*
++         * Returns the menu for the background click of extensions.
++         */
++        GMenu *   (*get_extensions_background_menu) (NautilusView         *view);
++
++        void     (*set_extensions_background_menu) (NautilusView *view,
++                                                    GMenu        *menu);
++        /*
++         * Returns the menu for templates.
++         */
++        GMenu *   (*get_templates_menu) (NautilusView         *view);
++
++        void     (*set_templates_menu) (NautilusView *view,
++                                        GMenu        *menu);
+         /* Current location of the view */
+         GFile*                          (*get_location)              (NautilusView         *view);
+         void                            (*set_location)              (NautilusView         *view,
+@@ -99,6 +113,13 @@ gboolean                       nautilus_view_is_loading                (Nautilus
+ 
+ gboolean                       nautilus_view_is_searching              (NautilusView         *view);
+ 
++void                           nautilus_view_set_templates_menu        (NautilusView *view,
++                                                                        GMenu        *menu);
++GMenu*                         nautilus_view_get_templates_menu        (NautilusView *view);
++void                           nautilus_view_set_extensions_background_menu (NautilusView *view,
++                                                                             GMenu        *menu);
++GMenu*                         nautilus_view_get_extensions_background_menu (NautilusView *view);
++
+ G_END_DECLS
+ 
+ #endif /* NAUTILUS_VIEW_H */
+diff --git a/src/nautilus-window-slot.c b/src/nautilus-window-slot.c
+index c3260aeb0..ea2197849 100644
+--- a/src/nautilus-window-slot.c
++++ b/src/nautilus-window-slot.c
+@@ -60,6 +60,8 @@ enum
+     PROP_WINDOW,
+     PROP_ICON,
+     PROP_TOOLBAR_MENU_SECTIONS,
++    PROP_EXTENSIONS_BACKGROUND_MENU,
++    PROP_TEMPLATES_MENU,
+     PROP_LOADING,
+     PROP_LOCATION,
+     NUM_PROPERTIES
+@@ -124,6 +126,14 @@ typedef struct
+     GError *mount_error;
+     gboolean tried_mount;
+     gint view_mode_before_search;
++
++    /* Menus */
++    GMenu *extensions_background_menu;
++    GMenu *templates_menu;
++
++    /* View bindings */
++    GBinding *extensions_background_menu_binding;
++    GBinding *templates_menu_binding;
+ } NautilusWindowSlotPrivate;
+ 
+ G_DEFINE_TYPE_WITH_PRIVATE (NautilusWindowSlot, nautilus_window_slot, GTK_TYPE_BOX);
+@@ -154,6 +164,12 @@ static void nautilus_window_slot_set_location (NautilusWindowSlot *self,
+ static void trash_state_changed_cb (NautilusTrashMonitor *monitor,
+                                     gboolean              is_empty,
+                                     gpointer              user_data);
++static void real_set_extensions_background_menu (NautilusWindowSlot *self,
++                                                 GMenu              *menu);
++static GMenu* real_get_extensions_background_menu (NautilusWindowSlot *self);
++static void real_set_templates_menu (NautilusWindowSlot *self,
++                                     GMenu              *menu);
++static GMenu* real_get_templates_menu (NautilusWindowSlot *self);
+ 
+ void
+ free_navigation_state (gpointer data)
+@@ -727,6 +743,26 @@ nautilus_window_slot_add_extra_location_widget (NautilusWindowSlot *self,
+     gtk_widget_show (priv->extra_location_widgets);
+ }
+ 
++static void
++real_set_extensions_background_menu (NautilusWindowSlot *self,
++                                     GMenu              *menu)
++{
++    NautilusWindowSlotPrivate *priv;
++    priv = nautilus_window_slot_get_instance_private (self);
++
++    priv->extensions_background_menu = menu != NULL ? g_object_ref (menu) : NULL;
++}
++
++static void
++real_set_templates_menu (NautilusWindowSlot *self,
++                         GMenu              *menu)
++{
++    NautilusWindowSlotPrivate *priv;
++    priv = nautilus_window_slot_get_instance_private (self);
++
++    priv->templates_menu = menu != NULL ? g_object_ref (menu) : NULL;
++}
++
+ static void
+ nautilus_window_slot_set_property (GObject      *object,
+                                    guint         property_id,
+@@ -755,6 +791,18 @@ nautilus_window_slot_set_property (GObject      *object,
+         }
+         break;
+ 
++        case PROP_EXTENSIONS_BACKGROUND_MENU:
++        {
++            real_set_extensions_background_menu (self, g_value_get_object (value));
++        }
++        break;
++
++        case PROP_TEMPLATES_MENU:
++        {
++            real_set_templates_menu (self, g_value_get_object (value));
++        }
++        break;
++
+         default:
+         {
+             G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+@@ -763,6 +811,44 @@ nautilus_window_slot_set_property (GObject      *object,
+     }
+ }
+ 
++static GMenu*
++real_get_extensions_background_menu (NautilusWindowSlot *self)
++{
++    NautilusWindowSlotPrivate *priv;
++
++    priv = nautilus_window_slot_get_instance_private (self);
++    return priv->extensions_background_menu;
++}
++
++GMenu*
++nautilus_window_slot_get_extensions_background_menu (NautilusWindowSlot *self)
++{
++    GMenu *menu = NULL;
++
++    g_object_get (self, "extensions-background-menu", &menu, NULL);
++
++    return menu;
++}
++
++static GMenu*
++real_get_templates_menu (NautilusWindowSlot *self)
++{
++    NautilusWindowSlotPrivate *priv;
++
++    priv = nautilus_window_slot_get_instance_private (self);
++    return priv->templates_menu;
++}
++
++GMenu*
++nautilus_window_slot_get_templates_menu (NautilusWindowSlot *self)
++{
++    GMenu *menu = NULL;
++
++    g_object_get (self, "templates-menu", &menu, NULL);
++
++    return menu;
++}
++
+ static void
+ nautilus_window_slot_get_property (GObject    *object,
+                                    guint       property_id,
+@@ -796,7 +882,19 @@ nautilus_window_slot_get_property (GObject    *object,
+ 
+         case PROP_TOOLBAR_MENU_SECTIONS:
+         {
+-            g_value_set_pointer (value, nautilus_window_slot_get_toolbar_menu_sections (self));
++            g_value_set_object (value, nautilus_window_slot_get_toolbar_menu_sections (self));
++        }
++        break;
++
++        case PROP_EXTENSIONS_BACKGROUND_MENU:
++        {
++            g_value_set_object (value, real_get_extensions_background_menu (self));
++        }
++        break;
++
++        case PROP_TEMPLATES_MENU:
++        {
++            g_value_set_object (value, real_get_templates_menu (self));
+         }
+         break;
+ 
+@@ -2717,6 +2815,9 @@ nautilus_window_slot_switch_new_content_view (NautilusWindowSlot *self)
+ 
+     if (priv->content_view != NULL)
+     {
++        g_binding_unbind (priv->extensions_background_menu_binding);
++        g_binding_unbind (priv->templates_menu_binding);
++
+         widget = GTK_WIDGET (priv->content_view);
+         gtk_widget_destroy (widget);
+         g_object_unref (priv->content_view);
+@@ -2733,8 +2834,17 @@ nautilus_window_slot_switch_new_content_view (NautilusWindowSlot *self)
+         gtk_widget_set_vexpand (widget, TRUE);
+         gtk_widget_show (widget);
+ 
++        priv->extensions_background_menu_binding = g_object_bind_property (priv->content_view, "extensions-background-menu",
++                                                                           self, "extensions-background-menu",
++                                                                           G_BINDING_DEFAULT | G_BINDING_SYNC_CREATE);
++        priv->templates_menu_binding = g_object_bind_property (priv->content_view, "templates-menu",
++                                                               self, "templates-menu",
++                                                               G_BINDING_DEFAULT | G_BINDING_SYNC_CREATE);
++
+         g_object_notify_by_pspec (G_OBJECT (self), properties[PROP_ICON]);
+         g_object_notify_by_pspec (G_OBJECT (self), properties[PROP_TOOLBAR_MENU_SECTIONS]);
++        g_object_notify_by_pspec (G_OBJECT (self), properties[PROP_EXTENSIONS_BACKGROUND_MENU]);
++        g_object_notify_by_pspec (G_OBJECT (self), properties[PROP_TEMPLATES_MENU]);
+     }
+ 
+ done:
+@@ -2786,6 +2896,9 @@ nautilus_window_slot_dispose (GObject *object)
+ 
+     nautilus_window_slot_remove_extra_location_widgets (self);
+ 
++    g_clear_pointer (&priv->extensions_background_menu_binding, g_binding_unbind);
++    g_clear_pointer (&priv->templates_menu_binding, g_binding_unbind);
++
+     if (priv->content_view)
+     {
+         gtk_widget_destroy (GTK_WIDGET (priv->content_view));
+@@ -2924,6 +3037,20 @@ nautilus_window_slot_class_init (NautilusWindowSlotClass *klass)
+                               "The menu sections to add to the toolbar menu for this slot",
+                               G_PARAM_READABLE);
+ 
++    properties[PROP_EXTENSIONS_BACKGROUND_MENU] =
++        g_param_spec_object ("extensions-background-menu",
++                             "Background menu of extensions",
++                             "Proxy property from the view for the background menu for extensions",
++                             G_TYPE_MENU,
++                             G_PARAM_READWRITE);
++
++    properties[PROP_TEMPLATES_MENU] =
++        g_param_spec_object ("templates-menu",
++                             "Templates menu",
++                             "Proxy property from the view for the templates menu",
++                             G_TYPE_MENU,
++                             G_PARAM_READWRITE);
++
+     properties[PROP_LOCATION] =
+         g_param_spec_object ("location",
+                              "Current location visible on the slot",
+diff --git a/src/nautilus-window-slot.h b/src/nautilus-window-slot.h
+index 573357d9b..9be645aa4 100644
+--- a/src/nautilus-window-slot.h
++++ b/src/nautilus-window-slot.h
+@@ -105,6 +105,10 @@ GIcon*   nautilus_window_slot_get_icon                     (NautilusWindowSlot *
+ 
+ NautilusToolbarMenuSections * nautilus_window_slot_get_toolbar_menu_sections (NautilusWindowSlot *slot);
+ 
++GMenu* nautilus_window_slot_get_templates_menu (NautilusWindowSlot *self);
++
++GMenu* nautilus_window_slot_get_extensions_background_menu (NautilusWindowSlot *self);
++
+ gboolean nautilus_window_slot_get_active                   (NautilusWindowSlot *slot);
+ 
+ void     nautilus_window_slot_set_active                   (NautilusWindowSlot *slot,
+diff --git a/src/resources/ui/nautilus-pathbar-context-menu.ui b/src/resources/ui/nautilus-pathbar-context-menu.ui
+index 11b68857d..403cf71f6 100644
+--- a/src/resources/ui/nautilus-pathbar-context-menu.ui
++++ b/src/resources/ui/nautilus-pathbar-context-menu.ui
+@@ -1,23 +1,54 @@
+ <?xml version="1.0" encoding="UTF-8"?>
++<!-- Generated with glade 3.22.1 -->
+ <interface>
+-  <menu id="pathbar-menu">
++  <menu id="current-view-menu">
++    <item>
++      <attribute name="label" translatable="yes">New _Folder</attribute>
++      <attribute name="action">view.new-folder</attribute>
++    </item>
++    <submenu>
++      <attribute name="id">templates-submenu</attribute>
++      <attribute name="label" translatable="yes">New _Document</attribute>
++      <attribute name="action">view.new-document</attribute>
++      <attribute name="hidden-when">action-disabled</attribute>
++    </submenu>
++    <item>
++      <attribute name="label" translatable="yes">Add to _Bookmarks</attribute>
++      <attribute name="action">view.bookmark</attribute>
++    </item>
+     <section>
+       <item>
+-        <attribute name="label" translatable="yes">Open In New _Tab</attribute>
+-        <attribute name="action">pathbar.open-item-new-tab</attribute>
+-        <attribute name="hidden-when">action-disabled</attribute>
++        <attribute name="label" translatable="yes">_Paste</attribute>
++        <attribute name="action">view.paste</attribute>
+       </item>
+       <item>
+-        <attribute name="label" translatable="yes">Open In New _Window</attribute>
+-        <attribute name="action">pathbar.open-item-new-window</attribute>
+-        <attribute name="hidden-when">action-disabled</attribute>
++        <attribute name="label" translatable="yes">Select _All</attribute>
++        <attribute name="action">view.select-all</attribute>
+       </item>
+     </section>
++    <section>
++      <attribute name="id">extensions</attribute>
++    </section>
+     <section>
+       <item>
+         <attribute name="label" translatable="yes">P_roperties</attribute>
+-        <attribute name="action">pathbar.properties</attribute>
++        <attribute name="action">view.current-directory-properties</attribute>
++        <attribute name="hidden-when">action-disabled</attribute>
+       </item>
+     </section>
+   </menu>
++  <menu id="button-menu">
++    <item>
++      <attribute name="label" translatable="yes">Open in New _Window</attribute>
++      <attribute name="action">pathbar.open-item-new-window</attribute>
++    </item>
++    <item>
++      <attribute name="label" translatable="yes">Open in New _Tab</attribute>
++      <attribute name="action">pathbar.open-item-new-tab</attribute>
++    </item>
++    <item>
++      <attribute name="label" translatable="yes">_Properties</attribute>
++      <attribute name="action">pathbar.properties</attribute>
++    </item>
++  </menu>
+ </interface>
+-- 
+2.36.0
+

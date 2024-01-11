@@ -1,0 +1,33 @@
+From 49718175b75c8ff89a219954f0abd6067e4a39f6 Mon Sep 17 00:00:00 2001
+From: Wong Heung Sang <hswongac@gmail.com>
+Date: Mon, 7 May 2018 00:10:15 +0800
+Subject: [PATCH] nautilus-file.c: Fix open writable file in recent tab
+
+File opened in recent tab now is read-only
+when it is writable.
+
+Replace nautilus_file_info_get_uri ()
+with nautilus_file_info_get_activation_uri ()
+fix the problem.
+
+https://gitlab.gnome.org/GNOME/nautilus/issues/378
+---
+ src/nautilus-file.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/nautilus-file.c b/src/nautilus-file.c
+index 0ec5e3848..d3ba8c841 100644
+--- a/src/nautilus-file.c
++++ b/src/nautilus-file.c
+@@ -4482,7 +4482,7 @@ nautilus_file_get_activation_uri (NautilusFile *file)
+ {
+     g_return_val_if_fail (NAUTILUS_IS_FILE (file), NULL);
+ 
+-    return nautilus_file_info_get_uri (NAUTILUS_FILE_INFO (file));
++    return nautilus_file_info_get_activation_uri (NAUTILUS_FILE_INFO (file));
+ }
+ 
+ GFile *
+-- 
+2.29.2
+

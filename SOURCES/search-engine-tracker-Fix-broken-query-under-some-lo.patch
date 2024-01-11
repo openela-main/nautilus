@@ -1,0 +1,53 @@
+From 7018cdcaa9954271cd82ba1c2620ecdfea176fae Mon Sep 17 00:00:00 2001
+From: Cristiano Nunes <cfgnunes@gmail.com>
+Date: Tue, 7 Apr 2020 14:47:41 +0000
+Subject: [PATCH] search-engine-tracker: Fix broken query under some locales
+
+We set a 5.0 rank for filename matches in the SPARQL query as a float
+argument in a format string.
+
+However, the floats in format strings are translated with the decimal
+separator from the locale. This means in some locales the rank has a
+comma instead of a dot, which results in a query error. In turn, this
+effectively broke the shell search provider.
+
+Instead of using a format specifier and passing the value as an
+argument, we should just use compile-time concatenation to insert '5.0'
+in the query unmodified.
+
+Fixes https://gitlab.gnome.org/GNOME/nautilus/-/issues/1412 and #1437
+
+Cherry-picked from 7f00ede9b410e88106cef34c634cb46e46015e37
+---
+ src/nautilus-search-engine-tracker.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/src/nautilus-search-engine-tracker.c b/src/nautilus-search-engine-tracker.c
+index 32b6039a9..571467a25 100644
+--- a/src/nautilus-search-engine-tracker.c
++++ b/src/nautilus-search-engine-tracker.c
+@@ -287,7 +287,7 @@ search_finished_idle (gpointer user_data)
+ }
+ 
+ /* This is used to compensate rank if fts:rank is not set (resp. fts:match is
+- * not used). The value was determined experimentally. I am conviced that
++ * not used). The value was determined experimentally. I am convinced that
+  * fts:rank is currently always set to 5.0 in case of filename match.
+  */
+ #define FILENAME_RANK 5.0
+@@ -372,10 +372,9 @@ nautilus_search_engine_tracker_start (NautilusSearchProvider *provider)
+                             " {"
+                             " ?urn nfo:fileName ?filename ."
+                             " FILTER(fn:contains(fn:lower-case(?filename), '%s')) ."
+-                            " BIND(%f AS ?rank2) ."
++                            " BIND(" FILENAME_RANK " AS ?rank2) ."
+                             " }",
+-                            search_text,
+-                            FILENAME_RANK);
++                            search_text);
+ 
+     g_string_append_printf (sparql, " . FILTER( ");
+ 
+-- 
+2.26.2
+

@@ -1,0 +1,13 @@
+diff --git a/src/nautilus-window.c b/src/nautilus-window.c
+index 89d492a76..5ea21b1d8 100644
+--- a/src/nautilus-window.c
++++ b/src/nautilus-window.c
+@@ -2864,6 +2864,7 @@ nautilus_window_show_about_dialog (NautilusWindow *window)
+                            "program-name", program_name,
+                            "version", VERSION,
+                            "comments", _("Access and organize your files."),
++                           "website", "https://wiki.gnome.org/action/show/Apps/Files",
+                            "copyright", "Copyright © 1999–2018 The Files Authors",
+                            "license-type", GTK_LICENSE_GPL_3_0,
+                            "artists", artists,
+
