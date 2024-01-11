@@ -6,7 +6,7 @@
 
 Name:           nautilus
 Version:        40.2
-Release:        11%{?dist}
+Release:        14%{?dist}
 Summary:        File manager for GNOME
 
 License:        GPLv3+
@@ -38,6 +38,16 @@ Patch12:        Revert-application-add-common-startup-code.patch
 Patch13:        Revert-freedesktop-dbus-Defer-D-Bus-property-setting.patch
 Patch14:        application-Export-FileManager1-iface-from-dbus_regi.patch
 Patch15:        freedesktop-dbus-Try-to-own-the-name-until-after-exp.patch
+
+# https://bugzilla.redhat.com/show_bug.cgi?id=2184292
+Patch16:        window-slot-Try-current-location-even-if-it-is-marke.patch
+Patch17:        window-slot-Force-reload-current-location-when-it-re.patch
+Patch18:        pathbar-Do-nothing-when-current-location-disappears.patch
+Patch19:        file-utilities-Prevent-passing-NULL-to-g_object_unre.patch
+Patch20:        window-slot-Fix-conditions-to-restore-selection-when.patch
+
+# https://bugzilla.redhat.com/show_bug.cgi?id=2120263
+Patch21:        file-Generate-thumbnails-when-the-preview-icon-is-av.patch
 
 BuildRequires:  desktop-file-utils
 BuildRequires:  gcc
@@ -169,6 +179,15 @@ desktop-file-validate $RPM_BUILD_ROOT%{_datadir}/applications/*.desktop
 %doc %{_datadir}/gtk-doc/html/libnautilus-extension/
 
 %changelog
+* Wed Jun 14 2023 Ondrej Holy <oholy@redhat.com> - 40.2-14
+- Force reload current location when it reappears (#2184292)
+
+* Thu Apr 06 2023 Ondrej Holy <oholy@redhat.com> - 40.2-13
+- Generate thumbnails when the preview icon is available (#2120263)
+
+* Wed Apr 05 2023 Ondrej Holy <oholy@redhat.com> - 40.2-12
+- Try current location even if it is marked as gone (#2184292)
+
 * Thu Feb 23 2023 Ondrej Holy <oholy@redhat.com> - 40.2-11
 - Try to own the name until after exporting skeleton (#2162302)
 
