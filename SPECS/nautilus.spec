@@ -6,7 +6,7 @@
 
 Name:           nautilus
 Version:        40.2
-Release:        14%{?dist}
+Release:        15%{?dist}
 Summary:        File manager for GNOME
 
 License:        GPLv3+
@@ -48,6 +48,11 @@ Patch20:        window-slot-Fix-conditions-to-restore-selection-when.patch
 
 # https://bugzilla.redhat.com/show_bug.cgi?id=2120263
 Patch21:        file-Generate-thumbnails-when-the-preview-icon-is-av.patch
+
+# https://issues.redhat.com/browse/RHEL-12820
+Patch:          window-slot-dnd-Stop-queueing-data-requests.patch
+Patch:          window-slot-dnd-Fix-data-retrieval-failure-path.patch
+Patch:          window-slot-dnd-Ignore-data-not-received-on-hover.patch
 
 BuildRequires:  desktop-file-utils
 BuildRequires:  gcc
@@ -179,6 +184,9 @@ desktop-file-validate $RPM_BUILD_ROOT%{_datadir}/applications/*.desktop
 %doc %{_datadir}/gtk-doc/html/libnautilus-extension/
 
 %changelog
+* Wed Oct 18 2023 Ondrej Holy <oholy@redhat.com> - 40.2-15
+- Fix crashes when dragging from another application (RHEL-12820)
+
 * Wed Jun 14 2023 Ondrej Holy <oholy@redhat.com> - 40.2-14
 - Force reload current location when it reappears (#2184292)
 
