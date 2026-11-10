@@ -6,7 +6,7 @@
 
 Name:           nautilus
 Version:        40.2
-Release:        15%{?dist}
+Release:        16%{?dist}
 Summary:        File manager for GNOME
 
 License:        GPLv3+
@@ -53,6 +53,9 @@ Patch21:        file-Generate-thumbnails-when-the-preview-icon-is-av.patch
 Patch:          window-slot-dnd-Stop-queueing-data-requests.patch
 Patch:          window-slot-dnd-Fix-data-retrieval-failure-path.patch
 Patch:          window-slot-dnd-Ignore-data-not-received-on-hover.patch
+
+# https://gitlab.gnome.org/GNOME/nautilus/-/merge_requests/1928
+Patch:          file-Do-not-count-children-for-autofs-mountpoints.patch
 
 BuildRequires:  desktop-file-utils
 BuildRequires:  gcc
@@ -184,6 +187,10 @@ desktop-file-validate $RPM_BUILD_ROOT%{_datadir}/applications/*.desktop
 %doc %{_datadir}/gtk-doc/html/libnautilus-extension/
 
 %changelog
+* Tue Mar 03 2026 Ondrej Holy <oholy@redhat.com> - 40.2-16
+- Do not count children for autofs mountpoints
+  Resolves: RHEL-137198
+
 * Wed Oct 18 2023 Ondrej Holy <oholy@redhat.com> - 40.2-15
 - Fix crashes when dragging from another application (RHEL-12820)
 

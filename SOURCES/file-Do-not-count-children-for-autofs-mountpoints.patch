@@ -1,0 +1,114 @@
+From 6eebbd90af4214dcb8848019caa35d0ee5e44274 Mon Sep 17 00:00:00 2001
+From: Ondrej Holy <oholy@redhat.com>
+Date: Tue, 20 Jan 2026 09:02:50 +0100
+Subject: [PATCH] file: Do not count children for autofs mountpoints
+
+Backport of the upstream commit 4eff235e2bc433519fecbaf136ab95b00a60b1c2.
+---
+ src/nautilus-file-utilities.c | 39 +++++++++++++++++++++++++++++++++++
+ src/nautilus-file-utilities.h |  2 ++
+ src/nautilus-file.c           | 11 ++++++++++
+ 3 files changed, 52 insertions(+)
+
+diff --git a/src/nautilus-file-utilities.c b/src/nautilus-file-utilities.c
+index bab77c7f2..443d6faf9 100644
+--- a/src/nautilus-file-utilities.c
++++ b/src/nautilus-file-utilities.c
+@@ -35,12 +35,14 @@
+ #include <eel/eel-string.h>
+ #include <eel/eel-debug.h>
+ #include <eel/eel-vfs-extensions.h>
++#include <fcntl.h>
+ #include <glib.h>
+ #include <glib/gi18n.h>
+ #include <glib/gstdio.h>
+ #include <gio/gio.h>
+ #include <unistd.h>
+ #include <stdlib.h>
++#include <sys/vfs.h>
+ 
+ #define NAUTILUS_USER_DIRECTORY_NAME "nautilus"
+ #define DEFAULT_NAUTILUS_DIRECTORY_MODE (0755)
+@@ -289,6 +291,11 @@ error:
+     return FALSE;
+ }
+ 
++/* From linux/magic.h */
++#ifndef AUTOFS_SUPER_MAGIC
++#define AUTOFS_SUPER_MAGIC 0x0187
++#endif
++
+ char *
+ nautilus_compute_title_for_location (GFile *location)
+ {
+@@ -1485,3 +1492,35 @@ location_settings_search_get_recursive_for_location (GFile *location)
+ 
+     return recursive;
+ }
++
++/* Checks if the location is an autofs mountpoint without triggering mount.*/
++gboolean
++nautilus_location_is_autofs_mountpoint (GFile *location)
++{
++    g_return_val_if_fail (G_IS_FILE (location), FALSE);
++
++    g_autofree char *path = g_file_get_path (location);
++    struct statfs buf;
++    gint fd;
++
++    if (path == NULL)
++    {
++        return FALSE;
++    }
++
++    fd = g_open (path, O_PATH | O_NOFOLLOW, 0);
++    if (fd < 0)
++    {
++        return FALSE;
++    }
++
++    if (fstatfs (fd, &buf) < 0)
++    {
++        close (fd);
++        return FALSE;
++    }
++
++    close (fd);
++
++    return (buf.f_type == AUTOFS_SUPER_MAGIC);
++}
+diff --git a/src/nautilus-file-utilities.h b/src/nautilus-file-utilities.h
+index 67df0e4d9..a0050dbbe 100644
+--- a/src/nautilus-file-utilities.h
++++ b/src/nautilus-file-utilities.h
+@@ -141,3 +141,5 @@ gchar * nautilus_uri_to_native_uri (const gchar *uri);
+ 
+ NautilusQueryRecursive location_settings_search_get_recursive (void);
+ NautilusQueryRecursive location_settings_search_get_recursive_for_location (GFile *location);
++
++gboolean nautilus_location_is_autofs_mountpoint (GFile *location);
+diff --git a/src/nautilus-file.c b/src/nautilus-file.c
+index 280bbb9e3..55fbad922 100644
+--- a/src/nautilus-file.c
++++ b/src/nautilus-file.c
+@@ -5687,6 +5687,17 @@ nautilus_file_should_show_directory_item_count (NautilusFile *file)
+         return FALSE;
+     }
+ 
++    /* Don't count items in autofs directories to avoid triggering automount. */
++    if (file->details->is_mountpoint)
++    {
++        g_autoptr (GFile) location = nautilus_file_get_location (file);
++
++        if (nautilus_location_is_autofs_mountpoint (location))
++        {
++            return FALSE;
++        }
++    }
++
+     /* Add the callback once for the life of our process */
+     if (!show_directory_item_count_callback_added)
+     {
+-- 
+2.53.0
+
